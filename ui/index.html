@@ -231,6 +231,11 @@
                             <button class="btn btn-secondary" onclick="ingestAllAlarms()">📥 Ingest All 50 Sample Alarms</button>
                             <button class="btn btn-secondary" onclick="refreshDashboard()">🔄 Refresh Dashboard</button>
                             <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+                                <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Upload Your Own Alarm Logs (.json / .jsonl / .csv)</label>
+                                <input type="file" id="logFileInput" accept=".json,.jsonl,.csv,.txt" style="margin-bottom:8px;width:100%;font-size:12px">
+                                <button class="btn btn-secondary" onclick="uploadAlarmLogs()">📤 Upload &amp; Diagnose</button>
+                            </div>
+                            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
                                 <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Maintenance Window</label>
                                 <div class="input-row" style="margin-bottom:8px">
                                     <input type="text" id="maintNode" placeholder="Node name" value="Router-NBO-03">
@@ -461,6 +466,35 @@
                 loadIncidents();
             } catch (e) {
                 showToast('Ingest error: ' + e.message, 'error');
+            }
+        }
+
+        // ─── Upload Custom Alarm Logs ────────────────────────────────────
+        async function uploadAlarmLogs() {
+            const input = document.getElementById('logFileInput');
+            if (!input.files || input.files.length === 0) {
+                showToast('Choose a .json, .jsonl, or .csv file first', 'error');
+                return;
+            }
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showToast(`Uploading ${file.name}...`, 'info');
+                const res = await fetch(`${API_BASE}/ingest/upload`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Upload failed');
+                }
+                showToast(`Ingested ${data.result?.ingested || 0} alarms from ${file.name}`, 'success');
+                loadDashboardStats();
+                loadIncidents();
+            } catch (e) {
+                showToast('Upload error: ' + e.message, 'error');
             }
         }
 

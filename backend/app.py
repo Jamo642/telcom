@@ -12,12 +12,13 @@ Enterprise-grade NOC assistant with:
 """
 
 import os
+import json
 import time
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -420,7 +421,7 @@ async def resolve_incident(alarm_id: str, request: ResolveRequest):
 @app.post("/ingest")
 async def ingest_alarms(filepath: str = "/data/sample_alarms.json"):
     """
-    Ingest alarm logs from a JSON file.
+    Ingest alarm logs from a JSON file already on the server.
     Processes each alarm through the full diagnosis pipeline.
     """
     try:
@@ -432,6 +433,68 @@ async def ingest_alarms(filepath: str = "/data/sample_alarms.json"):
         }
     except Exception as e:
         logger.error(f"Ingest failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/ingest/upload")
+async def ingest_uploaded_logs(file: UploadFile = File(...)):
+    """
+    Upload and ingest a user-provided alarm log file (.json, .jsonl, or .csv).
+
+    The file is saved to /data/uploads/ and then run through the same
+    diagnosis pipeline as the sample data.
+    """
+    try:
+        from backend.ingest import ingest_alarm_logs
+
+        allowed_ext = (".json", ".jsonl", ".csv", ".txt")
+        filename = file.filename or "uploaded_logs.json"
+        if not filename.lower().endswith(allowed_ext):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type. Allowed: {', '.join(allowed_ext)}",
+            )
+
+        upload_dir = "/data/uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Avoid overwriting previous uploads
+        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+        safe_name = f"{timestamp}_{filename}"
+        dest_path = os.path.join(upload_dir, safe_name)
+
+        contents = await file.read()
+
+        # CSV support: convert to the alarm JSON shape ingest_alarm_logs expects
+        if filename.lower().endswith(".csv"):
+            import csv
+            import io
+
+            text = contents.decode("utf-8", errors="replace")
+            reader = csv.DictReader(io.StringIO(text))
+            alarms = [dict(row) for row in reader]
+
+            json_path = dest_path.rsplit(".", 1)[0] + ".json"
+            with open(json_path, "w") as f:
+                json.dump(alarms, f, indent=2)
+            dest_path = json_path
+        else:
+            with open(dest_path, "wb") as f:
+                f.write(contents)
+
+        logger.info(f"Saved uploaded log file to {dest_path}")
+
+        result = ingest_alarm_logs(filepath=dest_path)
+        return {
+            "status": result["status"],
+            "filename": filename,
+            "saved_as": dest_path,
+            "result": result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Upload ingest failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
