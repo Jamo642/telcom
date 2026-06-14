@@ -1,0 +1,402 @@
+[
+  {
+    "alarm_id": "ALM-001",
+    "alarm_name": "BGP Session Dropped",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T06:30:00Z",
+    "alarm_text": "BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 is down. Route prefix count dropped from 500K to 0. All BGP routes withdrawn."
+  },
+  {
+    "alarm_id": "ALM-002",
+    "alarm_name": "BGP Session Flapping",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T06:32:00Z",
+    "alarm_text": "BGP session to AS64512 flapping on Router-KNB-04. Session state cycling between Established and Idle every 30 seconds. Route instability detected."
+  },
+  {
+    "alarm_id": "ALM-003",
+    "alarm_name": "High Packet Loss",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "packet_loss",
+    "timestamp": "2026-06-13T06:35:00Z",
+    "alarm_text": "Packet loss exceeding 25% on interface GigE0/1 of Router-KNB-04. ICMP echo tests show 25% loss. Link utilization at 95%. RTT increased from 12ms to 120ms."
+  },
+  {
+    "alarm_id": "ALM-004",
+    "alarm_name": "Interface CRC Errors",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-13T06:33:00Z",
+    "alarm_text": "CRC errors increasing rapidly on GigE0/1 on Router-KNB-04. Input errors: 14567 in last 5 minutes. Possible duplex mismatch or faulty SFP module."
+  },
+  {
+    "alarm_id": "ALM-005",
+    "alarm_name": "Interface Drops",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-13T07:15:00Z",
+    "alarm_text": "Output queue drops on Switch-NBI-07 interface TenGig0/3. Queue depth at 98%. Buffer utilization critical. Drops: 23000 packets in last minute."
+  },
+  {
+    "alarm_id": "ALM-006",
+    "alarm_name": "Power Supply Failure",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "power",
+    "timestamp": "2026-06-13T07:15:30Z",
+    "alarm_text": "Power supply unit 1 failed on Switch-NBI-07. Running on redundant PSU 2. Input voltage below threshold. Immediate hardware replacement required."
+  },
+  {
+    "alarm_id": "ALM-007",
+    "alarm_name": "High CPU Utilization",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "cpu",
+    "timestamp": "2026-06-13T07:18:00Z",
+    "alarm_text": "CPU utilization at 95% on Switch-NBI-07 due to broadcast storm. Control plane CPU at 98%. Spanning tree recalculation detected. MAC address table instability."
+  },
+  {
+    "alarm_id": "ALM-008",
+    "alarm_name": "Memory Utilization High",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "memory",
+    "timestamp": "2026-06-13T07:20:00Z",
+    "alarm_text": "Memory utilization at 92% on Switch-NBI-07. Free memory: 128MB of 1GB. Possible memory leak in IOS process. Process 'ipc_task' consuming 45% of memory."
+  },
+  {
+    "alarm_id": "ALM-009",
+    "alarm_name": "DNS Resolution Timeout",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "dns",
+    "timestamp": "2026-06-13T08:00:00Z",
+    "alarm_text": "DNS resolution timeout on Node-MSA-12. Queries to primary DNS 8.8.8.8 timing out after 5 seconds. Secondary DNS 8.8.4.4 also unreachable. Cache hit ratio dropping."
+  },
+  {
+    "alarm_id": "ALM-010",
+    "alarm_name": "Link Degradation",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "link",
+    "timestamp": "2026-06-13T08:05:00Z",
+    "alarm_text": "Link degradation detected on Node-MSA-12 uplink to Router-KNB-04. Link uptime: 45 days. Signal-to-noise ratio degraded from 28dB to 15dB over last 2 hours."
+  },
+  {
+    "alarm_id": "ALM-011",
+    "alarm_name": "BGP Neighbor Down",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T08:30:00Z",
+    "alarm_text": "BGP neighbor 10.0.3.1 (AS65001) is DOWN on Router-NBO-03. Hold timer expired. Last error: Open Message Error. Session was up for 12 days."
+  },
+  {
+    "alarm_id": "ALM-012",
+    "alarm_name": "Transient Packet Loss",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "packet_loss",
+    "timestamp": "2026-06-13T08:31:00Z",
+    "alarm_text": "Brief packet loss spike on Router-NBO-03. Loss duration: 45 seconds. Self-cleared. Loss rate peaked at 5%. Likely micro-burst related."
+  },
+  {
+    "alarm_id": "ALM-013",
+    "alarm_name": "High CPU on Core Router",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "cpu",
+    "timestamp": "2026-06-13T09:00:00Z",
+    "alarm_text": "CPU utilization at 88% on Router-KNB-04 core. BGP process using 60% CPU. 500K routes being processed. Adjacency changes detected."
+  },
+  {
+    "alarm_id": "ALM-014",
+    "alarm_name": "Power Supply Warning",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "power",
+    "timestamp": "2026-06-13T09:30:00Z",
+    "alarm_text": "Power supply 2 voltage warning on Switch-NBI-07. Voltage: 11.8V (threshold: 12.0V). PSU 1 already failed. Device now on backup power without redundancy."
+  },
+  {
+    "alarm_id": "ALM-015",
+    "alarm_name": "DNS Cache Poisoning",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "dns",
+    "timestamp": "2026-06-13T10:00:00Z",
+    "alarm_text": "Possible DNS cache poisoning on Node-MSA-12. Response mismatch between upstream and local resolver. 15% of queries returning incorrect IP addresses."
+  },
+  {
+    "alarm_id": "ALM-016",
+    "alarm_name": "Interface Flapping",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-13T10:30:00Z",
+    "alarm_text": "Interface GigE0/2 flapping on Router-KNB-04. Link state transitions: up/down 15 times in last 10 minutes. Possible faulty transceiver or loose cable."
+  },
+  {
+    "alarm_id": "ALM-017",
+    "alarm_name": "BGP Route Leak",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T11:00:00Z",
+    "alarm_text": "Possible BGP route leak detected on Router-NBO-03. 1500 prefixes from AS65001 being advertised to upstream AS64512. Prefix limit approaching."
+  },
+  {
+    "alarm_id": "ALM-018",
+    "alarm_name": "High Packet Loss Alarm",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "packet_loss",
+    "timestamp": "2026-06-13T11:30:00Z",
+    "alarm_text": "Packet loss at 12% on Router-NBO-03 interface GigE0/3. Loss pattern shows micro-bursts every 100ms. 5000 packets dropped in last 5 minutes."
+  },
+  {
+    "alarm_id": "ALM-019",
+    "alarm_name": "Memory Leak Suspected",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "memory",
+    "timestamp": "2026-06-13T12:00:00Z",
+    "alarm_text": "Memory leak suspected on Router-KNB-04. Memory usage growing 2% per hour over last 6 hours. Current: 82%. Process 'bgp_worker' not releasing memory."
+  },
+  {
+    "alarm_id": "ALM-020",
+    "alarm_name": "SNMP Timeout",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-13T12:30:00Z",
+    "alarm_text": "SNMP polling timeout on Node-MSA-12. Agent not responding on port 161. Last successful poll: 15 minutes ago. Possible agent crash or high CPU."
+  },
+  {
+    "alarm_id": "ALM-021",
+    "alarm_name": "Maintenance Window Test Alarm",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-13T13:00:00Z",
+    "alarm_text": "Interface test alarm during planned maintenance on Router-NBO-03. Node is scheduled for software upgrade from 12:00 to 15:00 UTC. Alarm expected."
+  },
+  {
+    "alarm_id": "ALM-022",
+    "alarm_name": "BGP Prefix Limit Warning",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T13:30:00Z",
+    "alarm_text": "BGP prefix limit warning on Router-KNB-04. Current prefixes: 480K. Maximum: 500K. Approaching max-prefix limit on session to AS64512."
+  },
+  {
+    "alarm_id": "ALM-023",
+    "alarm_name": "Link Utilization High",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "link",
+    "timestamp": "2026-06-13T14:00:00Z",
+    "alarm_text": "Link utilization at 98% on Router-KNB-04 uplink to core. Bandwidth: 10Gbps. Current throughput: 9.8Gbps. Growth trend: +5% per week over last month."
+  },
+  {
+    "alarm_id": "ALM-024",
+    "alarm_name": "Transient Interface Error",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-13T14:30:00Z",
+    "alarm_text": "Brief interface error burst on Switch-NBI-07 port Gi1/0/4. 50 CRC errors over 2 seconds. Self-cleared. Possible electromagnetic interference."
+  },
+  {
+    "alarm_id": "ALM-025",
+    "alarm_name": "DNS Server Unreachable",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "dns",
+    "timestamp": "2026-06-13T15:00:00Z",
+    "alarm_text": "DNS server 10.0.100.53 unreachable from Node-MSA-12. Service impact: 3000 users affected. Cache entries expiring. Public DNS queries failing."
+  },
+  {
+    "alarm_id": "ALM-026",
+    "alarm_name": "CPU Temperature High",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "cpu",
+    "timestamp": "2026-06-13T15:30:00Z",
+    "alarm_text": "CPU temperature at 85°C on Router-NBO-03. Warning threshold: 80°C. Critical threshold: 95°C. Fan speed: 4500 RPM. Ambient temperature: 32°C."
+  },
+  {
+    "alarm_id": "ALM-027",
+    "alarm_name": "BGP Convergence Slow",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T16:00:00Z",
+    "alarm_text": "BGP convergence taking 185 seconds after link failure on Router-NBO-03. SLA requires <60 seconds. Route processing delayed due to high CPU."
+  },
+  {
+    "alarm_id": "ALM-028",
+    "alarm_name": "Power Consumption Spike",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "power",
+    "timestamp": "2026-06-13T16:30:00Z",
+    "alarm_text": "Power consumption spike on Switch-NBI-07. Current: 850W. Baseline: 650W. Increase of 30%. Possible PSU failure imminent. Temperature also rising."
+  },
+  {
+    "alarm_id": "ALM-029",
+    "alarm_name": "DNS Query Rate High",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "dns",
+    "timestamp": "2026-06-13T17:00:00Z",
+    "alarm_text": "DNS query rate at 15000 QPS on Node-MSA-12. Normal baseline: 5000 QPS. Possible DDoS or misconfigured client. NXDOMAIN rate: 40%."
+  },
+  {
+    "alarm_id": "ALM-030",
+    "alarm_name": "Memory Page Faults",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "memory",
+    "timestamp": "2026-06-13T17:30:00Z",
+    "alarm_text": "High memory page faults on Switch-NBI-07. 15000 page faults per second. Available memory dropping. Process 'switch_daemon' may be leaking."
+  },
+  {
+    "alarm_id": "ALM-031",
+    "alarm_name": "Link Error Rate High",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "link",
+    "timestamp": "2026-06-13T18:00:00Z",
+    "alarm_text": "Link error rate at 0.01% on Node-MSA-12 uplink. Error rate increasing 2x every hour over last 4 hours. BER rising. Possible fiber degradation."
+  },
+  {
+    "alarm_id": "ALM-032",
+    "alarm_name": "BGP Peer Limit Reached",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T18:30:00Z",
+    "alarm_text": "BGP peer limit of 100 sessions reached on Router-KNB-04. Cannot establish new peerings. 2 new peering requests rejected in last 5 minutes."
+  },
+  {
+    "alarm_id": "ALM-033",
+    "alarm_name": "Packet Loss Increasing",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "packet_loss",
+    "timestamp": "2026-06-13T19:00:00Z",
+    "alarm_text": "Packet loss trend increasing on Router-NBO-03. Loss rate: 2% → 5% → 8% over last 3 hours. Jitter increasing from 5ms to 25ms. VoIP quality degrading."
+  },
+  {
+    "alarm_id": "ALM-034",
+    "alarm_name": "SFP Module Fault",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-13T19:30:00Z",
+    "alarm_text": "SFP module fault detected on Router-KNB-04 port GigE0/1. Tx power: -15dBm (low). Rx power: -20dBm (low). Laser bias current: 85mA (high)."
+  },
+  {
+    "alarm_id": "ALM-035",
+    "alarm_name": "DNS Anycast Failure",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "dns",
+    "timestamp": "2026-06-13T20:00:00Z",
+    "alarm_text": "DNS anycast node failure on Node-MSA-12. DNS service IP 10.0.100.53 not reachable from east region. 8000 users impacted. BGP anycast prefix withdrawn."
+  },
+  {
+    "alarm_id": "ALM-036",
+    "alarm_name": "Route Table Limit",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T20:30:00Z",
+    "alarm_text": "Route table at 95% capacity on Router-KNB-04. FIB: 950K entries. TCAM: 98% utilized. New routes being dropped. Route churn: 500 updates/second."
+  },
+  {
+    "alarm_id": "ALM-037",
+    "alarm_name": "Power Fluctuation",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "power",
+    "timestamp": "2026-06-13T21:00:00Z",
+    "alarm_text": "Power fluctuation detected on Switch-NBI-07. Input voltage: 220V ± 15V. Frequency: 49.5Hz. Possible generator test or grid instability."
+  },
+  {
+    "alarm_id": "ALM-038",
+    "alarm_name": "Memory Critical",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "memory",
+    "timestamp": "2026-06-13T21:30:00Z",
+    "alarm_text": "Memory critical on Router-NBO-03. Free memory: 45MB of 2GB (2%). System may crash. Most processes in retry state. Immediate reboot recommended."
+  },
+  {
+    "alarm_id": "ALM-039",
+    "alarm_name": "Link Degradation Trend",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "link",
+    "timestamp": "2026-06-13T22:00:00Z",
+    "alarm_text": "Link degradation accelerating on Node-MSA-12. SNR dropped from 25dB to 12dB in 4 hours (was 28dB at start). Pre-outage threshold: 10dB. Estimated time to failure: 2 hours."
+  },
+  {
+    "alarm_id": "ALM-040",
+    "alarm_name": "BGP Full Table Not Received",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T22:30:00Z",
+    "alarm_text": "BGP full table not received from upstream on Router-KNB-04. Received: 450K prefixes. Expected: 500K prefixes. 50K routes missing. Route selection incomplete."
+  },
+  {
+    "alarm_id": "ALM-041",
+    "alarm_name": "CPU Warning",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "cpu",
+    "timestamp": "2026-06-13T23:00:00Z",
+    "alarm_text": "CPU at 75% on Switch-NBI-07 during maintenance window. Expected to be under maintenance. Elevated CPU due to config sync operations."
+  },
+  {
+    "alarm_id": "ALM-042",
+    "alarm_name": "Transient BGP Flap",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-13T23:30:00Z",
+    "alarm_text": "BGP session flapped briefly on Router-NBO-03. Session was down for 15 seconds then re-established. No route impact. Likely keepalive timer issue."
+  },
+  {
+    "alarm_id": "ALM-043",
+    "alarm_name": "High Jitter",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "link",
+    "timestamp": "2026-06-13T23:45:00Z",
+    "alarm_text": "Jitter at 35ms on Node-MSA-12. VoIP quality degraded for east region users. Acceptable jitter: <20ms. Packet delay variation increasing."
+  },
+  {
+    "alarm_id": "ALM-044",
+    "alarm_name": "DNS Recurssion Depth",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "dns",
+    "timestamp": "2026-06-14T00:00:00Z",
+    "alarm_text": "DNS recursion depth exceeded on Node-MSA-12. Query chain >10 hops. Possible DNS loop or misconfigured forwarder. Resolution time: 4500ms."
+  },
+  {
+    "alarm_id": "ALM-045",
+    "alarm_name": "Switch MAC Table Full",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-14T00:30:00Z",
+    "alarm_text": "MAC address table full on Switch-NBI-07. 32768 entries limit reached. Switch flooding unknown unicast frames. Performance degradation expected."
+  },
+  {
+    "alarm_id": "ALM-046",
+    "alarm_name": "Router Crash Imminent",
+    "node_name": "Router-NBO-03",
+    "alarm_type": "memory",
+    "timestamp": "2026-06-14T01:00:00Z",
+    "alarm_text": "Router-NBO-03 memory critically low. Free: 12MB. Watchdog timer about to trigger reboot. Crash dump being generated. Estimated time to crash: 5 minutes."
+  },
+  {
+    "alarm_id": "ALM-047",
+    "alarm_name": "BGP Session Re-established",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "bgp",
+    "timestamp": "2026-06-14T01:30:00Z",
+    "alarm_text": "BGP session to AS64512 re-established on Router-KNB-04. Session was down for 4 hours 58 minutes. Route convergence in progress. 200K prefixes received."
+  },
+  {
+    "alarm_id": "ALM-048",
+    "alarm_name": "Power Restored",
+    "node_name": "Switch-NBI-07",
+    "alarm_type": "power",
+    "timestamp": "2026-06-14T02:00:00Z",
+    "alarm_text": "Power restored to Switch-NBI-07. PSU 1 replaced and operational. Redundancy restored. Input voltage: 240V. Current: 680W. Normal parameters."
+  },
+  {
+    "alarm_id": "ALM-049",
+    "alarm_name": "DNS Resolution Restored",
+    "node_name": "Node-MSA-12",
+    "alarm_type": "dns",
+    "timestamp": "2026-06-14T02:30:00Z",
+    "alarm_text": "DNS resolution restored on Node-MSA-12. Anycast service back online. Cache repopulating. Query success rate: 100%. Latency: 15ms."
+  },
+  {
+    "alarm_id": "ALM-050",
+    "alarm_name": "All Metrics Normal",
+    "node_name": "Router-KNB-04",
+    "alarm_type": "interface",
+    "timestamp": "2026-06-14T03:00:00Z",
+    "alarm_text": "All metrics returned to normal on Router-KNB-04. CPU: 45%. Memory: 55%. Packet loss: 0%. BGP sessions: 98/100 established. Link utilization: 60%."
+  }
+]

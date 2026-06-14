@@ -1,0 +1,11 @@
+# TeleNOC AI - Python Dependencies
+# Lightweight: no GPU required, all LLM inference via API
+# Uses OPEA services for embeddings and retrieval
+
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.9.0
+python-dotenv==1.0.0
+httpx==0.27.0
+requests==2.31.0
+numpy==1.26.3

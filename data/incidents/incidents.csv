@@ -1,0 +1,225 @@
+incident_id,incident_name,description,root_cause,severity,resolution_steps,timestamp
+INC001,Packet Loss on Node B12,High packet loss detected on Node B12 in Region East. Users report degraded service quality. Impact: 5000 users affected.,Interface buffering issue due to queue overflow during peak hours,High,"1. Check interface statistics (show interfaces gigabit 0/0/0)
+2. Increase buffer memory to 65536 bytes
+3. Enable weighted round-robin queueing (WRRQ)
+4. Monitor packet loss for 1 hour
+5. Document changes in configuration management system",2024-01-15T14:30:00Z
+INC002,BGP Route Convergence Delay in Region A,BGP is taking 180 seconds to converge after link failure. Network topology change in Region A causing delayed prefix advertisements.,Aggressive BGP timers and slow best-path calculation,Critical,"1. Access BGP router configuration (R01-RegionA)
+2. Reduce hold-time from 180s to 30s
+3. Reduce keepalive from 60s to 10s
+4. Enable BFD (Bidirectional Forwarding Detection) for fast failure detection
+5. Run 'clear ip bgp *' to force re-establish
+6. Verify prefix advertisements within 45 seconds",2024-01-15T15:45:00Z
+INC003,DNS Resolution Timeout,DNS queries timing out in 40% of requests. Users unable to resolve domain names. Impact: Partial service degradation.,Overloaded DNS cache server with insufficient memory allocation,Medium,"1. SSH to DNS resolver (dns-cache-01)
+2. Increase cache size from 256MB to 1GB (config: max_cache_size=1073741824)
+3. Add DNS failover server to reduce load
+4. Clear DNS cache and restart dnsmasq service
+5. Monitor DNS response times (target <10ms)
+6. Implement DNS query rate limiting (100 req/sec)",2024-01-15T16:20:00Z
+INC004,Disk Space Critical on Router-03,Router-03 disk usage at 95%. System may crash if additional logs are written.,Excessive logging and debug output accumulation,High,"1. Connect to Router-03 (telnet/SSH)
+2. Archive current logs to remote syslog server
+3. Clear debug buffers: 'undebug all'
+4. Set log rotation policy: max-file-size=10MB max-files=5
+5. Manually delete old log files from /var/log
+6. Re-enable logging at appropriate level
+7. Verify disk usage drops below 70%",2024-01-15T17:00:00Z
+INC005,High CPU Utilization on BNG-East,CPU utilization on Broadband Network Gateway (BNG-East) spiking to 85-95% during peak hours. Causing connection timeouts.,Inefficient ACL processing and high volume of connection establishment,Medium,"1. Check running processes: 'show processes cpu | include {process-name}'
+2. Optimize ACL rules (consolidate overlapping rules)
+3. Enable hardware-based switching (offload to ASIC)
+4. Upgrade forwarding plane firmware
+5. Implement connection rate limiting
+6. Monitor CPU for 24 hours
+7. Plan capacity upgrade if persistent",2024-01-15T18:30:00Z
+INC006,MPLS Tunnel Down in Backbone,Critical MPLS tunnel between DC1 and DC2 is down. No traffic rerouting detected. Impact: Data center inter-connectivity lost.,BGP next-hop unreachable due to interface flap,Critical,"1. Verify tunnel status: 'show mpls tunnels tunnel-id 100'
+2. Check BGP adjacency: 'show ip bgp summary'
+3. Inspect routing table for next-hop: 'show ip route 10.0.1.0'
+4. Restart BGP process if adjacency down: 'clear ip bgp *'
+5. Verify RSVP signaling: 'show ip rsvp neighbor'
+6. Trigger FRR (Fast Reroute) if alternate path exists
+7. Confirm tunnel status restored within SLA (5 minutes)",2024-01-15T19:45:00Z
+INC007,QoS Policy Not Applied,QoS policy for VoIP traffic is not being enforced. Call quality degraded. Customers reporting jitter and packet loss.,Configuration commit failed due to syntax error in policy definition,Medium,"1. Retrieve current QoS policy config: 'show policy-map VoIP-Policy'
+2. Check for syntax errors in policy attachment
+3. Re-deploy corrected policy: 'policy-map VoIP-Policy'
+4. Verify policy maps to correct interfaces
+5. Test QoS with synthetic VoIP traffic
+6. Monitor DSCP marking for VoIP flows
+7. Confirm MOS (Mean Opinion Score) > 4.0",2024-01-15T20:10:00Z
+INC008,Subscriber Authentication Failures,Radius authentication server returning unexpected responses. Affecting PPP/PPPOE sessions. 300 concurrent sessions dropped.,RADIUS shared secret mismatch on NAS and RADIUS server,High,"1. SSH to RADIUS server and NAS device
+2. Verify shared secret is identical on both sides
+3. Check RADIUS server logs for authentication attempt errors
+4. Verify NAS is sending requests to correct RADIUS server IP
+5. Test connectivity: 'radtest user password {RADIUS-IP} 0 {secret}'
+6. If mismatch detected: update NAS configuration with correct secret
+7. Clear NAS authentication cache: 'clear aaa cache'
+8. Monitor authentication success rate to 100%",2024-01-15T21:25:00Z
+INC009,Link Flapping on GigabitEthernet 3/0/1,Interface GigE 3/0/1 on aggregation switch flapping (up/down) every 2 seconds. Causing route instability.,Faulty fiber optic interface (dirty connector or fiber break in-progress),High,"1. Connect to aggregation switch
+2. Disable interface: 'shutdown'
+3. Inspect physical connector: clean with fiber cleaning kit
+4. Inspect cable for visible breaks
+5. Re-enable interface: 'no shutdown'
+6. Monitor stability for 10 minutes using 'show interfaces GigabitEthernet 3/0/1'
+7. If flapping persists: replace transceiver SFP module
+8. If still unstable: replace fiber cable and retest",2024-01-15T22:40:00Z
+INC010,NAT Pool Exhaustion,NAT pool for carrier-grade NAT (CGN) is exhausted. New subscriber connections being rejected.,Insufficient NAT pool sizing for concurrent user growth,High,"1. Check current NAT pool utilization: 'show nat statistics | include {pool-id}'
+2. Verify current pool size vs. concurrent users
+3. Expand NAT pool: add additional IP range to pool
+4. Enable dynamic address allocation for efficient reuse
+5. Implement port mapping reuse timeout
+6. Test new connections: verify 100% success rate
+7. Monitor pool utilization for trend analysis
+8. Plan permanent capacity upgrade",2024-01-16T08:15:00Z
+INC011,IGMP Snooping Disabled,Multicast traffic flooding entire VLAN. Network switches incorrectly forwarding multicast to all ports (non-IGMP snooping mode).,Configuration change removed IGMP snooping during planned maintenance,Medium,"1. Verify IGMP snooping status: 'show ip igmp snooping'
+2. Enable IGMP snooping globally: 'ip igmp snooping'
+3. Enable per-VLAN: 'ip igmp snooping vlan 100 querier'
+4. Configure designated querier IP: 'ip igmp snooping vlan 100 querier-ip 10.1.1.1'
+5. Clear IGMP tables: 'clear ip igmp snooping'
+6. Verify multicast is now contained to subscribed ports
+7. Validate video/IPTV service restoration",2024-01-16T09:30:00Z
+INC012,Congestion on Peering Link to ISP-X,Outbound traffic to ISP-X peering link at 95% capacity. Inter-domain traffic being dropped.,BGP prepend path causing suboptimal routing decision,Medium,"1. Check BGP advertised routes: 'show ip bgp neighbors {ISP-X-IP} advertised-routes'
+2. Analyze traffic flow with NetFlow data
+3. Identify which prefixes consuming excess bandwidth
+4. Adjust BGP AS-PATH prepending to prefer alternate path
+5. Test routing change with traffic shift
+6. Monitor link utilization (target: <70%)
+7. Plan long-term capacity upgrade to ISP-X",2024-01-16T10:45:00Z
+INC013,VLAN Misconfiguration on Access Switch,Hosts on VLAN 50 unable to communicate across VLAN boundary. Default gateway unreachable.,VLAN 50 not configured on core switch L3 interface,High,"1. Access core switch configuration
+2. Verify VLAN 50 exists: 'show vlan id 50'
+3. If missing: create VLAN 50 'vlan 50'
+4. Create L3 SVI: 'interface vlan 50'
+5. Assign IP address: 'ip address 10.50.1.1 255.255.255.0'
+6. Enable interface: 'no shutdown'
+7. Test host connectivity to default gateway
+8. Verify inter-VLAN routing is enabled: 'show ip routing'",2024-01-16T11:20:00Z
+INC014,OAM Loopback Detection Failed,OAM (Ethernet Operation Administration Maintenance) loopback test failing between Provider Edge routers PE1 and PE2.,OAM MEP (Maintenance End Point) configuration incomplete on PE2,Medium,"1. Connect to PE1 and PE2
+2. Verify OAM MEP configuration: 'show ethernet oam'
+3. Check VLAN 101 CFM configuration on both PEs
+4. Ensure CFM level and MEP ID match on both devices
+5. Enable connectivity check: 'ethernet oam connectivity-check'
+6. Send loopback request: 'ethernet oam loopback'
+7. Verify loopback response received within 100ms
+8. Confirm L2 path integrity",2024-01-16T12:35:00Z
+INC015,Route Reflector High Memory Usage,Route Reflector consuming 89% of available memory. Risk of route table corruption if memory exhausted.,RR learning excessive number of BGP routes from new peer,High,"1. Monitor BGP route table size: 'show ip bgp summary'
+2. Identify peer(s) advertising excessive routes
+3. Implement route filtering via prefix-list
+4. Reduce route memory footprint with summarization
+5. If necessary: restart BGP process during maintenance window
+6. Upgrade RR memory if problem recurring
+7. Monitor memory to <60% post-remediation",2024-01-16T13:50:00Z
+INC016,SLA Violation - Latency Threshold Exceeded,Network latency between Region A and Region B exceeded 150ms SLA threshold for 45 minutes.,BGP path oscillation causing packet drops and retransmissions,Critical,"1. Measure latency: 'ping {destination} -c 100'
+2. Trace route path: 'traceroute {destination}'
+3. Check for packet loss in intermediate hops
+4. Verify no BGP flapping: 'show ip bgp flap-statistics'
+5. If flapping detected: investigate cause and stabilize BGP
+6. Consider alternate BGP path if available
+7. Run latency test post-remediation (target: <100ms)
+8. Document root cause and prevention measures",2024-01-16T14:20:00Z
+INC017,Interface Duplex Mismatch,Fast Ethernet 0/1 on access switch operating in half-duplex while peer is full-duplex. Causing CRC errors and packet loss.,Auto-negotiation failure between switch and upstream device,High,"1. Connect to access switch
+2. Check current duplex: 'show interfaces fastethernet 0/1'
+3. Verify peer duplex configuration
+4. Force duplex to match peer: 'interface fastethernet 0/1' then 'speed 100 duplex full'
+5. Disable auto-negotiation: 'no negotiate'
+6. Clear interface counters: 'clear counters fastethernet 0/1'
+7. Monitor for CRC errors (should drop to 0)
+8. Re-enable auto-negotiation if resolved",2024-01-16T15:35:00Z
+INC018,MTU Size Mismatch,Packets larger than 1500 bytes being fragmented on MPLS LSP. Causing performance degradation and application timeouts.,Default MTU 1500 not accounting for MPLS/VPN label overhead,Medium,"1. Verify current MTU on interface: 'show interfaces | include MTU'
+2. Increase MTU to 1600 (accounting for 4 MPLS labels + 16 bytes overhead)
+3. Update MTU on ingress and egress PE routers
+4. Test with large packet: 'ping {destination} -s 1400'
+5. Verify packets not fragmented: 'don''t-fragment' flag set
+6. Re-run application performance test
+7. Monitor for DF-bit exceeded errors",2024-01-16T16:50:00Z
+INC019,ARP Table Overflow,ARP cache table at 98% capacity. New ARP entries being dropped. Causing MAC resolution failures.,Broadcast storm or misconfigured DHCP causing excessive ARP learns,High,"1. Check ARP table: 'show arp | wc -l'
+2. Identify ARP entries by count: 'show arp | include {suspicious-IP}'
+3. If broadcast storm: find source and isolate interface
+4. Increase ARP table size if available: 'arp table-size 65536'
+5. Enable ARP aging: 'arp aging 300' (5 min timeout)
+6. Clear stale ARP entries: 'clear arp-cache'
+7. Implement ARP throttling: max 1000 ARP learns per interface
+8. Monitor ARP table post-remediation",2024-01-16T17:20:00Z
+INC020,Spanning Tree Topology Change,STP topology change detected. Bridge priority incorrect. Causing suboptimal traffic flow and loop prevention.,Priority value misconfigured on new switch - non-root becoming root,High,"1. Determine current root bridge: 'show spanning-tree'
+2. Verify bridge priority: 'show spanning-tree priority'
+3. Identify bridge with incorrect priority
+4. Correct bridge priority: 'spanning-tree priority {value}'
+5. Preferred root priority should be 4096 (lowest cost to win)
+6. Verify STP converges to correct topology within 30 seconds
+7. Validate port roles (root, designated, blocking)
+8. Confirm no loops with ping from blocked port isolated",2024-01-16T18:40:00Z
+INC021,Policing Rate Too Low,Traffic shaping policy allowing only 100Mbps but link is 1Gbps. Legitimate traffic being rate-limited incorrectly.,Stale policy not updated when circuit upgraded from 100M to 1Gbps,Medium,"1. Check applied traffic policy: 'show policy-map interface'
+2. Verify policy rate matches actual link speed
+3. Update policing rate to 900Mbps (90% of 1Gbps)
+4. Adjust burst/peak rates accordingly
+5. Re-deploy policy with: 'service-policy output/input {policy-name}'
+6. Test with iperf or traffic generator (target: >800Mbps)
+7. Monitor for dropped packets (should be <0.1%)",2024-01-16T19:15:00Z
+INC022,Layer 2 Loop Detected,Spanning Tree detecting loop on VLAN 200. Broadcast storm risk detected. STP blocked interface 4/0/2.,Rogue switch or cable connected without permission causing loop,High,"1. Check STP status: 'show spanning-tree vlan 200'
+2. Identify blocked ports: all ports marked 'BLOCKING'
+3. Find unexpected device on port 4/0/2: check MAC table
+4. Physically disconnect rogue device or cable from port 4/0/2
+5. Clear MAC table: 'clear mac address-table dynamic'
+6. Verify STP converges (should see 'FORWARDING' ports)
+7. Monitor for spanning tree changes over 1 hour
+8. Document security incident and implement port security",2024-01-16T20:30:00Z
+INC023,DHCP Pool Exhausted,DHCP server unable to assign IP addresses. 45 devices unable to obtain DHCP lease.,DHCP pool size too small for number of active clients,High,"1. Check DHCP pool status: 'show ip dhcp pool {pool-name}'
+2. Verify available IPs: 'show ip dhcp pool statistics'
+3. Increase pool size: add additional IP range to DHCP pool
+4. Adjust lease time to more aggressive reuse: 2-4 hours vs. 24 hours
+5. Implement DHCP snooping to prevent rogue DHCP servers
+6. Test DHCP by releasing/renewing on client
+7. Monitor pool utilization for growth trend
+8. Plan subnet expansion if permanent issue",2024-01-16T21:10:00Z
+INC024,Syslog Server Unreachable,Syslog logs no longer being sent to logging server. System logs accumulating on device (95% disk).,Syslog server IP changed or routing to syslog server down,High,"1. Verify syslog server configuration: 'show logging'
+2. Check routing to syslog server: 'ping {syslog-server-ip}'
+3. Update syslog server IP if incorrect: 'logging host {new-ip}'
+4. Verify DNS resolution if using hostname: 'nslookup {hostname}'
+5. Test TCP/UDP 514 connectivity: 'telnet {syslog-ip} 514'
+6. If unreachable: check firewall ACLs or routing
+7. Archive current logs to clear disk space
+8. Verify logs being sent to server (check server logs)",2024-01-16T22:25:00Z
+INC025,BGP Prefix Leak Detected,Non-approved prefixes being advertised to ISP peer. Potential security breach or misconfiguration.,Route-map filter missing on BGP export policy,Critical,"1. Compare advertised vs. approved prefix list
+2. Check BGP route-map configuration: 'show ip bgp neighbors {ISP} advertised-routes'
+3. Verify prefix list: 'show ip prefix-list'
+4. Add missing prefix-list filter if not present
+5. Apply route-map to BGP export: 'route-map EXPORT permit 10'
+6. Force BGP soft-reset: 'clear ip bgp {ISP} soft out'
+7. Verify only approved prefixes advertised
+8. Document change and update security audit",2024-01-17T08:00:00Z
+INC026,Interface Error Rate High,GigabitEthernet 1/0/1 showing 1.2% error rate. FCS (Frame Check Sequence) errors detected.,Faulty interface card or dirty fiber optic connector,High,"1. Check interface errors: 'show interfaces gigabitethernet 1/0/1'
+2. Monitor for increasing errors: collect baseline statistics
+3. If fiber: inspect connector, clean or replace if dirty
+4. If copper: check for cable damage or shielding issues
+5. Replace interface card if errors persist after cleaning
+6. Clear counters: 'clear counters gigabitethernet 1/0/1'
+7. Monitor for <0.01% error rate post-fix
+8. If hardware failure: schedule replacement",2024-01-17T09:20:00Z
+INC027,Routing Protocol Convergence Slow,OSPF convergence time 120 seconds after link failure. SLA requires <60 seconds.,OSPF timers not tuned for fast convergence.,High,"1. Check OSPF timers: 'show ip ospf interface brief'
+2. Reduce hello interval from 10s to 2s
+3. Reduce dead interval from 40s to 8s (4x hello)
+4. Update on all routers in topology: 'ip ospf hello-interval 2'
+5. Enable BFD for sub-second failure detection (optional)
+6. Simulate link failure and measure convergence
+7. Target: <30 seconds convergence
+8. Verify no route flapping occurs",2024-01-17T10:35:00Z
+INC028,Firewall Policy Blocking Legitimate Traffic,Firewall ACL blocking valid traffic destined to production servers. Business-critical services unavailable.,Overlapping ACL rule with DENY before ALLOW,High,"1. Access firewall configuration
+2. Review ACL rules in order: 'show access-lists {acl-name}'
+3. Identify DENY rule blocking traffic
+4. Reorder rules: move specific ALLOW before general DENY
+5. Add missing ALLOW rule if absent
+6. Test traffic: verify connectivity to blocked server
+7. Monitor firewall logs: 'show firewall logs filtered'
+8. Document policy change",2024-01-17T11:50:00Z
+INC029,LLDP Neighbor Discovery Failed,Network discovery tools unable to find neighboring devices. LLDP protocol disabled.,LLDP disabled during security hardening without documentation,Medium,"1. Verify LLDP status: 'show lldp'
+2. If disabled: enable LLDP globally: 'lldp run'
+3. Enable per-interface: 'lldp transmit' and 'lldp receive'
+4. Wait 30 seconds for LLDP hello to be sent
+5. Verify neighbors discovered: 'show lldp neighbors'
+6. Update network topology map
+7. Re-enable network discovery tools
+8. Document LLDP re-enablement reason",2024-01-17T12:15:00Z
+INC030,VoIP Call Setup Latency,VoIP call setup taking 8-10 seconds (SLA: <2 seconds). Call establishment slow.,SIP signaling routed inefficiently through congested backbone,Medium,"1. Measure SIP signaling latency: 'show voip calls'
+2. Trace SIP path: 'debug ip sip packets'
+3. Identify congestion point in SIP proxy path
+4. Verify SIP server priority routing
+5. Adjust QoS for SIP signaling traffic (DSCP=24)
+6. Implement connection rate limiting on SIP proxy
+7. Re-measure call setup time (target: <1.5 seconds)
+8. Monitor for setup time regressions",2024-01-17T13:40:00Z

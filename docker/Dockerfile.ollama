@@ -1,0 +1,74 @@
+FROM ollama/ollama:latest
+
+# Create initialization script that runs ollama and pulls model
+RUN mkdir -p /app
+COPY <<EOF /app/entrypoint.sh
+#!/bin/bash
+set -e
+
+echo "🚀 Starting Ollama service..."
+ollama serve &
+OLLAMA_PID=$!
+
+# Wait for Ollama API to be ready
+echo "⏳ Waiting for Ollama API to be ready..."
+MAX_RETRIES=60
+RETRY_COUNT=0
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+        echo "✅ Ollama API is ready"
+        break
+    fi
+    echo -n "."
+    sleep 1
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo ""
+    echo "⚠️  Ollama took longer than expected, but continuing..."
+fi
+
+echo ""
+echo "Checking for llama2 model..."
+
+# Check if model already exists in local cache
+if ls /root/.ollama/models/manifests/registry.ollama.ai/library/llama2* 2>/dev/null | grep -q .; then
+    echo "✅ llama2 model found in cache (no download needed)"
+elif curl -s http://localhost:11434/api/tags 2>/dev/null | grep -q "llama2"; then
+    echo "✅ llama2 model already loaded in Ollama"
+else
+    echo "📥 Pulling llama2 model from registry..."
+    echo "   (This is a 4GB download - first run only)"
+    echo "   If this fails, the model will be pulled on next container restart"
+    echo ""
+    
+    if timeout 1800 ollama pull llama2 2>&1; then
+        echo ""
+        echo "✅ llama2 model pulled successfully"
+    else
+        echo ""
+        echo "⚠️  Model pull timed out or failed"
+        echo "   Don't worry - the container will retry on next start if internet is available"
+    fi
+fi
+
+echo ""
+echo "📊 Current Ollama models:"
+curl -s http://localhost:11434/api/tags 2>/dev/null | python3 -c "import sys, json; data = json.load(sys.stdin); [print(f\"  - {m.get('name', 'unknown')} ({m.get('size', 0)/1e9:.1f}GB)\") for m in data.get('models', [])]" 2>/dev/null || echo "  (Unable to list models)"
+
+echo ""
+echo "✅ Ollama is ready and running on port 11434"
+echo ""
+
+wait $OLLAMA_PID
+EOF
+
+RUN chmod +x /app/entrypoint.sh
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+

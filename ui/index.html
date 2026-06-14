@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleNOC AI - NOC Dashboard</title>
+    <style>
+        :root {
+            --bg-dark: #0a0e17;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2332;
+            --border: #1e293b;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-yellow: #eab308;
+            --accent-red: #ef4444;
+            --accent-orange: #f97316;
+            --p1-color: #ef4444;
+            --p2-color: #f97316;
+            --p3-color: #eab308;
+            --p4-color: #22c55e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 16px; }
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+        }
+        .header h1 {
+            font-size: 24px; font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), #8b5cf6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-status { display: flex; align-items: center; gap: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .status-dot.online { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+        .status-dot.offline { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+        .stats-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px; margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 16px; transition: all 0.2s;
+        }
+        .stat-card:hover { background: var(--bg-card-hover); transform: translateY(-1px); }
+        .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+        .stat-value.green { color: var(--accent-green); }
+        .stat-value.red { color: var(--accent-red); }
+        .stat-value.yellow { color: var(--accent-yellow); }
+        .stat-value.blue { color: var(--accent-blue); }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } }
+        .card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 12px; overflow: hidden;
+        }
+        .card-header {
+            padding: 14px 16px; border-bottom: 1px solid var(--border);
+            font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;
+        }
+        .card-body { padding: 16px; max-height: 400px; overflow-y: auto; }
+        .card-body::-webkit-scrollbar { width: 4px; }
+        .card-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .alarm-form { display: flex; flex-direction: column; gap: 12px; }
+        .alarm-form textarea, .alarm-form input, .alarm-form select {
+            background: #1a2332; border: 1px solid var(--border); border-radius: 8px;
+            padding: 10px 12px; color: var(--text-primary); font-size: 14px;
+            font-family: inherit; transition: border-color 0.2s;
+        }
+        .alarm-form textarea:focus, .alarm-form input:focus, .alarm-form select:focus {
+            outline: none; border-color: var(--accent-blue);
+        }
+        .alarm-form textarea { min-height: 80px; resize: vertical; }
+        .alarm-form .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--accent-blue); color: white; }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #1e293b; color: var(--text-primary); }
+        .btn-secondary:hover { background: #334155; }
+        .severity-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+        }
+        .severity-P1 { background: rgba(239,68,68,0.2); color: var(--p1-color); }
+        .severity-P2 { background: rgba(249,115,22,0.2); color: var(--p2-color); }
+        .severity-P3 { background: rgba(234,179,8,0.2); color: var(--p3-color); }
+        .severity-P4 { background: rgba(34,197,94,0.2); color: var(--p4-color); }
+        .incident-item {
+            padding: 12px; border-radius: 8px; background: #0f172a;
+            margin-bottom: 8px; border-left: 3px solid var(--border); transition: all 0.2s;
+        }
+        .incident-item:hover { background: #1a2332; }
+        .incident-item.p1-border { border-left-color: var(--p1-color); }
+        .incident-item.p2-border { border-left-color: var(--p2-color); }
+        .incident-item.p3-border { border-left-color: var(--p3-color); }
+        .incident-item.p4-border { border-left-color: var(--p4-color); }
+        .incident-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .incident-id { font-weight: 600; font-size: 13px; }
+        .incident-node { color: var(--text-secondary); font-size: 12px; }
+        .incident-text { font-size: 13px; color: var(--text-secondary); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .incident-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--text-secondary); }
+        .escalation-item {
+            padding: 10px; border-radius: 8px; background: #0f172a;
+            margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .escalation-overdue { border-left: 3px solid var(--accent-red); }
+        .escalation-pending { border-left: 3px solid var(--accent-yellow); }
+        .trend-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .trend-critical { background: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
+        .trend-warning { background: var(--accent-yellow); box-shadow: 0 0 6px var(--accent-yellow); }
+        .trend-healthy { background: var(--accent-green); }
+        .result-card {
+            background: #0f172a; border: 1px solid var(--border); border-radius: 8px;
+            padding: 16px; margin-top: 12px;
+        }
+        .result-card h3 { font-size: 14px; margin-bottom: 8px; color: var(--accent-blue); }
+        .result-card pre {
+            background: #0a0e17; padding: 12px; border-radius: 6px;
+            font-size: 12px; overflow-x: auto; color: var(--text-primary);
+        }
+        .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .filter-row select, .filter-row input {
+            background: #1a2332; border: 1px solid var(--border); border-radius: 6px;
+            padding: 6px 10px; color: var(--text-primary); font-size: 12px;
+        }
+        .loading { animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
+            border-radius: 8px; font-size: 13px; z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success { background: #166534; border: 1px solid var(--accent-green); }
+        .toast.error { background: #7f1d1d; border: 1px solid var(--accent-red); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .tab-bar { display: flex; gap: 4px; background: #1a2332; padding: 4px; border-radius: 8px; margin-bottom: 16px; }
+        .tab-bar button {
+            flex: 1; padding: 8px 16px; border: none; border-radius: 6px;
+            background: transparent; color: var(--text-secondary); font-size: 13px;
+            font-weight: 500; cursor: pointer; transition: all 0.2s;
+        }
+        .tab-bar button.active { background: var(--bg-card); color: var(--text-primary); }
+        .tab-bar button:hover:not(.active) { background: rgba(255,255,255,0.05); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📡 TeleNOC AI</h1>
+            <div class="header-status">
+                <span id="statusText" style="font-size:13px;color:var(--text-secondary)">Connecting...</span>
+                <span id="statusDot" class="status-dot offline"></span>
+            </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row" id="statsRow">
+            <div class="stat-card"><div class="stat-label">Open Incidents</div><div class="stat-value blue" id="statOpenIncidents">-</div></div>
+            <div class="stat-card"><div class="stat-label">P1 Critical</div><div class="stat-value red" id="statP1Count">-</div></div>
+            <div class="stat-card"><div class="stat-label">Mean MTTR</div><div class="stat-value yellow" id="statMTTR">-</div></div>
+            <div class="stat-card"><div class="stat-label">System Status</div><div class="stat-value green" id="statStatus">-</div></div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <button class="active" onclick="switchTab('diagnose')">🔍 Diagnose</button>
+            <button onclick="switchTab('incidents')">📋 Incidents</button>
+            <button onclick="switchTab('mttr')">⏱ MTTR</button>
+            <button onclick="switchTab('trends')">📈 Trends</button>
+            <button onclick="switchTab('escalations')">🔔 Escalations</button>
+        </div>
+
+        <!-- Diagnose Tab -->
+        <div id="tab-diagnose" class="tab-content active">
+            <div class="main-grid">
+                <!-- Diagnosis Form -->
+                <div class="card">
+                    <div class="card-header">🔍 Diagnose Alarm</div>
+                    <div class="card-body">
+                        <div class="alarm-form">
+                            <div class="input-row">
+                                <input type="text" id="alarmId" placeholder="Alarm ID (e.g. ALM-001)" value="ALM-001">
+                                <input type="text" id="nodeName" placeholder="Node Name (e.g. Router-KNB-04)" value="Router-KNB-04">
+                            </div>
+                            <div class="input-row">
+                                <input type="text" id="alarmName" placeholder="Alarm Name (e.g. BGP Session Down)" value="BGP Session Dropped">
+                                <select id="alarmType">
+                                    <option value="bgp">BGP</option>
+                                    <option value="packet_loss">Packet Loss</option>
+                                    <option value="interface">Interface</option>
+                                    <option value="power">Power</option>
+                                    <option value="cpu">CPU</option>
+                                    <option value="memory">Memory</option>
+                                    <option value="dns">DNS</option>
+                                    <option value="link">Link</option>
+                                </select>
+                            </div>
+                            <textarea id="alarmText" placeholder="Alarm description...">BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 is down. Route prefix count dropped from 500K to 0.</textarea>
+                            <div style="display:flex;gap:8px">
+                                <button class="btn btn-primary" onclick="diagnoseAlarm()" id="diagnoseBtn">🚀 Diagnose</button>
+                                <button class="btn btn-secondary" onclick="loadSampleAlarm()">📥 Load Sample</button>
+                                <button class="btn btn-secondary" onclick="clearResult()">🗑 Clear</button>
+                            </div>
+                            <div id="resultContainer"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">⚡ Quick Actions</div>
+                    <div class="card-body">
+                        <div style="display:flex;flex-direction:column;gap:8px">
+                            <button class="btn btn-secondary" onclick="ingestAllAlarms()">📥 Ingest All 50 Sample Alarms</button>
+                            <button class="btn btn-secondary" onclick="refreshDashboard()">🔄 Refresh Dashboard</button>
+                            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+                                <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Maintenance Window</label>
+                                <div class="input-row" style="margin-bottom:8px">
+                                    <input type="text" id="maintNode" placeholder="Node name" value="Router-NBO-03">
+                                    <input type="text" id="maintReason" placeholder="Reason" value="Software upgrade">
+                                </div>
+                                <button class="btn btn-secondary" onclick="registerMaintenance()">🔧 Register Maintenance</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incidents Tab -->
+        <div id="tab-incidents" class="tab-content">
+            <div class="card">
+                <div class="card-header">📋 Recent Incidents</div>
+                <div class="card-body">
+                    <div class="filter-row">
+                        <select id="incidentFilterStatus"><option value="">All Status</option><option value="open">Open</option><option value="resolved">Resolved</option><option value="escalated">Escalated</option></select>
+                        <select id="incidentFilterSeverity"><option value="">All Severity</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option><option value="P4">P4</option></select>
+                        <input type="text" id="incidentFilterNode" placeholder="Filter by node...">
+                        <button class="btn btn-secondary" onclick="loadIncidents()">Filter</button>
+                    </div>
+                    <div id="incidentsList" style="max-height:500px;overflow-y:auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MTTR Tab -->
+        <div id="tab-mttr" class="tab-content">
+            <div class="card">
+                <div class="card-header">⏱ MTTR Report</div>
+                <div class="card-body">
+                    <div id="mttrContent" style="font-size:13px;color:var(--text-secondary)">Loading MTTR data...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trends Tab -->
+        <div id="tab-trends" class="tab-content">
+            <div class="card">
+                <div class="card-header">📈 Degradation Trends</div>
+                <div class="card-body">
+                    <div id="trendsContent" style="font-size:13px;color:var(--text-secondary)">Loading trend data...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Escalations Tab -->
+        <div id="tab-escalations" class="tab-content">
+            <div class="card">
+                <div class="card-header">🔔 Escalation Queue</div>
+                <div class="card-body">
+                    <div id="escalationsContent" style="font-size:13px;color:var(--text-secondary)">Loading escalations...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + (window.location.port === '8080' ? '/api' : '');
+
+        // ─── Tab Switching ─────────────────────────────────────────────────
+        function switchTab(name) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            document.querySelector(`.tab-bar button[onclick*="${name}"]`).classList.add('active');
+
+            // Load data for the tab
+            if (name === 'incidents') loadIncidents();
+            if (name === 'mttr') loadMTTR();
+            if (name === 'trends') loadTrends();
+            if (name === 'escalations') loadEscalations();
+        }
+
+        // ─── Toast Notifications ──────────────────────────────────────────
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // ─── Health Check ─────────────────────────────────────────────────
+        async function checkHealth() {
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                const data = await res.json();
+                if (data.status === 'healthy') {
+                    document.getElementById('statusDot').className = 'status-dot online';
+                    document.getElementById('statusText').textContent = 'Connected';
+                    document.getElementById('statusText').style.color = 'var(--accent-green)';
+                    return true;
+                }
+            } catch (e) {
+                document.getElementById('statusDot').className = 'status-dot offline';
+                document.getElementById('statusText').textContent = 'Disconnected';
+                document.getElementById('statusText').style.color = 'var(--accent-red)';
+            }
+            return false;
+        }
+
+        // ─── Load Dashboard Stats ─────────────────────────────────────────
+        async function loadDashboardStats() {
+            try {
+                const res = await fetch(`${API_BASE}/dashboard`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    const d = data.dashboard;
+                    document.getElementById('statOpenIncidents').textContent = d.counts.open_incidents || 0;
+                    document.getElementById('statP1Count').textContent = d.counts.open_p1 || 0;
+                    document.getElementById('statMTTR').textContent = d.mttr.overall_mttr?.mean ? Math.round(d.mttr.overall_mttr.mean) + 's' : '-';
+                    document.getElementById('statStatus').textContent = d.trends.status || 'unknown';
+                    const statusEl = document.getElementById('statStatus');
+                    if (d.trends.status === 'critical') statusEl.className = 'stat-value red';
+                    else if (d.trends.status === 'warning') statusEl.className = 'stat-value yellow';
+                    else statusEl.className = 'stat-value green';
+                }
+            } catch (e) {
+                console.error('Dashboard load error:', e);
+            }
+        }
+
+        // ─── Diagnose Alarm ───────────────────────────────────────────────
+        async function diagnoseAlarm() {
+            const btn = document.getElementById('diagnoseBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Diagnosing...';
+            document.getElementById('resultContainer').innerHTML = '';
+
+            const alarm = {
+                alarm_id: document.getElementById('alarmId').value || 'ALM-MANUAL',
+                alarm_name: document.getElementById('alarmName').value || 'Manual Alarm',
+                node_name: document.getElementById('nodeName').value || 'Unknown',
+                alarm_type: document.getElementById('alarmType').value || 'generic',
+                alarm_text: document.getElementById('alarmText').value || 'No description provided',
+                timestamp: new Date().toISOString().replace('Z', 'Z'),
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/diagnose`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(alarm),
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    showResult(data.diagnosis);
+                    showToast('Diagnosis complete', 'success');
+                    loadDashboardStats();
+                } else {
+                    showToast('Diagnosis failed: ' + JSON.stringify(data), 'error');
+                }
+            } catch (e) {
+                showToast('Connection error: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Diagnose';
+            }
+        }
+
+        function showResult(diag) {
+            const sev = diag.severity || 'P4';
+            const container = document.getElementById('resultContainer');
+            container.innerHTML = `
+                <div class="result-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                        <h3 style="margin:0">Diagnosis: ${diag.alarm_id}</h3>
+                        <span class="severity-badge severity-${sev}">${sev}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px">
+                        <div><strong>Confidence:</strong> ${(diag.confidence * 100).toFixed(0)}%</div>
+                        <div><strong>Escalate to:</strong> ${diag.escalate_to}</div>
+                        <div><strong>Respond within:</strong> ${diag.respond_within}</div>
+                        <div><strong>MTTR started:</strong> ${new Date(diag.mttr_started_at).toLocaleTimeString()}</div>
+                    </div>
+                    <div style="margin-bottom:8px;font-size:13px">
+                        <strong>Root Cause:</strong> ${diag.root_cause || 'N/A'}
+                    </div>
+                    <div style="margin-bottom:8px;font-size:13px">
+                        <strong>Recommended Action:</strong> ${diag.recommended_action || 'N/A'}
+                    </div>
+                    <div style="margin-bottom:8px;font-size:13px">
+                        <strong>Runbook:</strong> ${diag.relevant_runbook}
+                    </div>
+                    ${diag.filtered ? `<div style="color:var(--accent-yellow);font-size:12px;margin-top:8px">⚠️ Filtered: ${diag.filter_reason}</div>` : ''}
+                    ${diag.escalation ? `<div style="margin-top:8px;padding:8px;border-radius:4px;background:rgba(234,179,8,0.1);font-size:12px">
+                        <strong>Escalation:</strong> ${diag.escalation.reason}
+                    </div>` : ''}
+                    <pre style="margin-top:12px">${JSON.stringify(diag, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        function clearResult() {
+            document.getElementById('resultContainer').innerHTML = '';
+        }
+
+        function loadSampleAlarm() {
+            const samples = [
+                { id: 'ALM-001', name: 'BGP Session Dropped', node: 'Router-KNB-04', type: 'bgp', text: 'BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 is down. Route prefix count dropped from 500K to 0.' },
+                { id: 'ALM-005', name: 'Interface Drops', node: 'Switch-NBI-07', type: 'interface', text: 'Output queue drops on Switch-NBI-07 interface TenGig0/3. Queue depth at 98%. Buffer utilization critical. Drops: 23000 packets in last minute.' },
+                { id: 'ALM-006', name: 'Power Supply Failure', node: 'Switch-NBI-07', type: 'power', text: 'Power supply unit 1 failed on Switch-NBI-07. Running on redundant PSU 2. Input voltage below threshold.' },
+                { id: 'ALM-009', name: 'DNS Resolution Timeout', node: 'Node-MSA-12', type: 'dns', text: 'DNS resolution timeout on Node-MSA-12. Queries to primary DNS 8.8.8.8 timing out after 5 seconds. Cache hit ratio dropping.' },
+                { id: 'ALM-025', name: 'DNS Server Unreachable', node: 'Node-MSA-12', type: 'dns', text: 'DNS server 10.0.100.53 unreachable from Node-MSA-12. Service impact: 3000 users affected. Cache entries expiring.' },
+                { id: 'ALM-038', name: 'Memory Critical', node: 'Router-NBO-03', type: 'memory', text: 'Memory critical on Router-NBO-03. Free memory: 45MB of 2GB (2%). System may crash. Immediate reboot recommended.' },
+                { id: 'ALM-046', name: 'Router Crash Imminent', node: 'Router-NBO-03', type: 'memory', text: 'Router-NBO-03 memory critically low. Free: 12MB. Watchdog timer about to trigger reboot. Crash dump being generated.' },
+            ];
+            const sample = samples[Math.floor(Math.random() * samples.length)];
+            document.getElementById('alarmId').value = sample.id;
+            document.getElementById('alarmName').value = sample.name;
+            document.getElementById('nodeName').value = sample.node;
+            document.getElementById('alarmType').value = sample.type;
+            document.getElementById('alarmText').value = sample.text;
+        }
+
+        // ─── Ingest Alarms ────────────────────────────────────────────────
+        async function ingestAllAlarms() {
+            try {
+                const res = await fetch(`${API_BASE}/ingest?filepath=/data/sample_alarms.json`, { method: 'POST' });
+                const data = await res.json();
+                showToast(`Ingested: ${data.result?.ingested || 0} alarms`, 'success');
+                loadDashboardStats();
+                loadIncidents();
+            } catch (e) {
+                showToast('Ingest error: ' + e.message, 'error');
+            }
+        }
+
+        // ─── Incidents ────────────────────────────────────────────────────
+        async function loadIncidents() {
+            const status = document.getElementById('incidentFilterStatus').value;
+            const severity = document.getElementById('incidentFilterSeverity').value;
+            const node = document.getElementById('incidentFilterNode').value;
+
+            let url = `${API_BASE}/incidents?limit=50`;
+            if (status) url += `&status=${status}`;
+            if (severity) url += `&severity=${severity}`;
+            if (node) url += `&node_name=${node}`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                const list = document.getElementById('incidentsList');
+
+                if (data.status === 'success' && data.incidents.length > 0) {
+                    list.innerHTML = data.incidents.map(inc => {
+                        const sevClass = (inc.severity || 'P4').toLowerCase() + '-border';
+                        const sev = inc.severity || 'P4';
+                        return `<div class="incident-item ${sevClass}">
+                            <div class="incident-header">
+                                <span class="incident-id">${inc.alarm_id}</span>
+                                <span class="severity-badge severity-${sev}">${sev}</span>
+                            </div>
+                            <div class="incident-node">${inc.node_name || 'Unknown'} · ${inc.alarm_type || 'generic'}</div>
+                            <div class="incident-text">${inc.root_cause || inc.raw_alarm_text?.substring(0, 100) || 'No description'}</div>
+                            <div class="incident-meta">
+                                <span>⏱ ${inc.mttr_seconds ? Math.round(inc.mttr_seconds) + 's' : 'Open'}</span>
+                                <span>📊 ${(inc.confidence * 100).toFixed(0)}%</span>
+                                <span>📌 ${inc.status}</span>
+                                <span>🕐 ${new Date(inc.created_at).toLocaleString()}</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">No incidents found. Try ingesting sample alarms first.</div>';
+                }
+            } catch (e) {
+                document.getElementById('incidentsList').innerHTML = `<div style="color:var(--accent-red)">Error loading incidents: ${e.message}</div>`;
+            }
+        }
+
+        // ─── MTTR ─────────────────────────────────────────────────────────
+        async function loadMTTR() {
+            try {
+                const res = await fetch(`${API_BASE}/mttr`);
+                const data = await res.json();
+                const el = document.getElementById('mttrContent');
+
+                if (data.status === 'success' && data.mttr_report.n_incidents > 0) {
+                    const r = data.mttr_report;
+                    let html = `<div style="margin-bottom:16px">
+                        <strong>Overall MTTR:</strong> ${r.overall_mttr?.mean || 0}s (median: ${r.overall_mttr?.median || 0}s, p95: ${r.overall_mttr?.p95 || 0}s)
+                        <span style="margin-left:12px">Trend: ${r.trend?.direction || 'stable'}</span>
+                        <span style="margin-left:12px">Status: <span class="${r.status === 'critical' ? 'stat-value red' : r.status === 'warning' ? 'stat-value yellow' : 'stat-value green'}">${r.status}</span></span>
+                    </div>`;
+                    
+                    if (Object.keys(r.per_severity).length > 0) {
+                        html += '<strong>By Severity:</strong><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px">';
+                        for (const [sev, stats] of Object.entries(r.per_severity)) {
+                            html += `<div style="background:#0f172a;padding:10px;border-radius:6px">
+                                <span class="severity-badge severity-${sev}">${sev}</span>
+                                <div style="margin-top:4px">Mean: ${stats.mean_mttr}s</div>
+                                <div>Median: ${stats.median_mttr}s</div>
+                                <div>SLA: ${stats.sla_compliance_pct || 0}%</div>
+                                <div>Count: ${stats.count}</div>
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+
+                    if (Object.keys(r.per_node).length > 0) {
+                        html += '<div style="margin-top:16px"><strong>By Node:</strong><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px">';
+                        for (const [node, stats] of Object.entries(r.per_node)) {
+                            html += `<div style="background:#0f172a;padding:10px;border-radius:6px">
+                                <div><strong>${node}</strong></div>
+                                <div>Mean: ${stats.mean_mttr}s</div>
+                                <div>Count: ${stats.count}</div>
+                            </div>`;
+                        }
+                        html += '</div></div>';
+                    }
+
+                    el.innerHTML = html;
+                } else {
+                    el.innerHTML = 'No MTTR data available yet. Ingest alarms to generate MTTR metrics.';
+                }
+            } catch (e) {
+                document.getElementById('mttrContent').innerHTML = `Error: ${e.message}`;
+            }
+        }
+
+        // ─── Trends ───────────────────────────────────────────────────────
+        async function loadTrends() {
+            try {
+                const res = await fetch(`${API_BASE}/trends`);
+                const data = await res.json();
+                const el = document.getElementById('trendsContent');
+
+                if (data.status === 'success' && data.trends.nodes?.length > 0) {
+                    let html = `<div style="margin-bottom:12px">
+                        System Status: <span class="${data.trends.status === 'critical' ? 'stat-value red' : data.trends.status === 'warning' ? 'stat-value yellow' : 'stat-value green'}">${data.trends.status}</span>
+                        · Nodes assessed: ${data.trends.total_nodes_assessed}
+                    </div>`;
+
+                    html += data.trends.nodes.map(n => `
+                        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#0f172a;border-radius:6px;margin-bottom:4px">
+                            <span class="trend-indicator trend-${n.status}"></span>
+                            <span style="flex:1"><strong>${n.node_name}</strong></span>
+                            <span style="color:var(--text-secondary)">Alarms: ${n.total_alarms_24h}</span>
+                            <span style="color:var(--text-secondary)">Score: ${n.avg_severity_score}</span>
+                            <span class="stat-value ${n.status === 'critical' ? 'red' : n.status === 'warning' ? 'yellow' : 'green'}" style="font-size:13px">${n.status}</span>
+                        </div>
+                    `).join('');
+
+                    el.innerHTML = html;
+                } else {
+                    el.innerHTML = 'No trend data available yet. Data accumulates as alarms are processed.';
+                }
+            } catch (e) {
+                document.getElementById('trendsContent').innerHTML = `Error: ${e.message}`;
+            }
+        }
+
+        // ─── Escalations ──────────────────────────────────────────────────
+        async function loadEscalations() {
+            try {
+                const res = await fetch(`${API_BASE}/escalations`);
+                const data = await res.json();
+                const el = document.getElementById('escalationsContent');
+
+                if (data.status === 'success') {
+                    const es = data.escalations;
+                    let html = `<div style="margin-bottom:12px">
+                        Pending: ${es.pending || 0} · Overdue: ${es.overdue || 0} · Acknowledged: ${es.acknowledged || 0}
+                    </div>`;
+
+                    if (es.queue && es.queue.length > 0) {
+                        html += es.queue.map(e => `
+                            <div class="escalation-item ${e.time_remaining_seconds <= 0 ? 'escalation-overdue' : 'escalation-pending'}">
+                                <div>
+                                    <div><strong>${e.alarm_id}</strong> → ${e.escalated_to}</div>
+                                    <div style="font-size:11px;color:var(--text-secondary)">${e.reason?.substring(0, 80) || ''}</div>
+                                </div>
+                                <div style="text-align:right">
+                                    <div style="font-size:13px;font-weight:600">${e.time_remaining_formatted}</div>
+                                    <div style="font-size:11px;color:var(--text-secondary)">${e.status}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        html += '<div style="text-align:center;padding:20px;color:var(--text-secondary)">No pending escalations</div>';
+                    }
+
+                    el.innerHTML = html;
+                }
+            } catch (e) {
+                document.getElementById('escalationsContent').innerHTML = `Error: ${e.message}`;
+            }
+        }
+
+        // ─── Maintenance ──────────────────────────────────────────────────
+        async function registerMaintenance() {
+            const node = document.getElementById('maintNode').value;
+            const reason = document.getElementById('maintReason').value;
+            const now = new Date();
+            const start = now.toISOString().replace('Z', 'Z');
+            const end = new Date(now.getTime() + 4 * 3600000).toISOString().replace('Z', 'Z');
+
+            try {
+                const res = await fetch(`${API_BASE}/maintenance`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ node_name: node, start_time: start, end_time: end, reason: reason }),
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showToast(`Maintenance registered for ${node}`, 'success');
+                } else {
+                    showToast('Failed: ' + JSON.stringify(data), 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
+        }
+
+        // ─── Dashboard Refresh ────────────────────────────────────────────
+        async function refreshDashboard() {
+            await Promise.all([checkHealth(), loadDashboardStats()]);
+            showToast('Dashboard refreshed', 'success');
+        }
+
+        // ─── Init ─────────────────────────────────────────────────────────
+        async function init() {
+            await checkHealth();
+            await loadDashboardStats();
+            // Auto-refresh every 30 seconds
+            setInterval(async () => {
+                await checkHealth();
+                await loadDashboardStats();
+            }, 30000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
