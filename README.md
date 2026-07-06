@@ -23,6 +23,11 @@ cp .env.example .env
 
 Open **http://localhost:8080** when the script completes (~5–7 min cold, ~30 s warm).
 
+**With full OPEA microservice stack:**
+```bash
+./deploy.sh --opea   # starts embedding-tei, retriever-redis, dataprep, chatqna
+```
+
 ## Requirements
 
 - Docker + Docker Compose
@@ -92,6 +97,44 @@ COMPOSE_PROFILES=opea docker compose -f docker/docker-compose.yml up -d
 ```bash
 docker compose -f docker/docker-compose.yml down          # stop
 docker compose -f docker/docker-compose.yml logs -f backend  # logs
+```
+
+## Expected Outcomes
+
+After `./deploy.sh` completes, a judge should see:
+
+**1. Health check**
+```json
+{"status":"healthy","timestamp":"...","version":"2.0.0"}
+```
+
+**2. Agent answers a NOC question in 2–6 steps**
+```
+Query: "What are the most critical active alerts?"
+→ Calls get_active_alerts (1 tool call)
+→ Answer: "There are 54 active alerts. The most severe are 22 P2 alerts.
+  Most recent: ALM-050 (BGP session failure, Router-KNB-04, P2)..."
+```
+
+**3. FiGHT detection fires on threat evidence**
+```
+Input: "SS7 MAP SRI queries from external ISPC, SCCP flood on STP-Core-01"
+→ FGT5019 detected: SS7 Location Tracking via MAP-SRI
+→ Confidence: 55 (LOW tier), 3 matched indicators
+→ Approve & Apply remediation button rendered
+```
+
+**4. Approve remediation logs action**
+```json
+{"status":"executed","technique_id":"FGT5019","target":"STP-Core-01",
+ "action_taken":"Deploy GSMA FS.11/FS.19 SS7 firewall...","logged_to":"/data/fight_remediations.jsonl"}
+```
+
+**5. OPEA health endpoint**
+```
+GET http://localhost:8000/opea/health
+→ Shows embedding/retriever/dataprep/chatqna reachability status
+→ Default deploy: degraded (OPEA off). Run ./deploy.sh --opea for full stack.
 ```
 
 ## License

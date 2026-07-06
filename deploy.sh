@@ -13,6 +13,14 @@
 
 set -e
 
+# ─── Parse flags ─────────────────────────────────────────────────────
+ENABLE_OPEA=false
+for arg in "$@"; do
+    case $arg in
+        --opea) ENABLE_OPEA=true ;;
+    esac
+done
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -97,9 +105,20 @@ echo ""
 # Build backend image
 docker compose -f docker/docker-compose.yml build backend 2>&1 | grep -E "^#|Building|built|error" || true
 
-# Start services — include ollama profile only when needed
+# Start services — include profiles as needed
+PROFILES=""
 if [ "$LLM_PROVIDER" = "ollama" ]; then
-    COMPOSE_PROFILES=ollama docker compose -f docker/docker-compose.yml up -d
+    PROFILES="ollama"
+fi
+if [ "$ENABLE_OPEA" = "true" ]; then
+    PROFILES="${PROFILES:+$PROFILES,}opea"
+    echo -e "${BLUE}   OPEA mode: embedding-tei, retriever-redis, dataprep, chatqna will start${NC}"
+    echo -e "${YELLOW}   ⚠ First run will pull ~8GB of OPEA images — allow 10–20 min${NC}"
+    echo ""
+fi
+
+if [ -n "$PROFILES" ]; then
+    COMPOSE_PROFILES=$PROFILES docker compose -f docker/docker-compose.yml up -d
 else
     docker compose -f docker/docker-compose.yml up -d
 fi
@@ -183,7 +202,9 @@ echo -e "${CYAN}   🔧 API:            http://localhost:8000${NC}"
 echo -e "${CYAN}   📚 API Docs:       http://localhost:8000/docs${NC}"
 echo -e "${CYAN}   🤖 Agent Chat:     POST http://localhost:8000/agent/chat${NC}"
 echo -e "${CYAN}   🛡️  FiGHT Engine:  detect_fight_techniques tool via agent${NC}"
+echo -e "${CYAN}   🔍 OPEA Health:    http://localhost:8000/opea/health${NC}"
 echo ""
-echo -e "${YELLOW}🛑 To stop:${NC} docker compose -f docker/docker-compose.yml down"
-echo -e "${YELLOW}📖 Logs:${NC}   docker compose -f docker/docker-compose.yml logs -f backend"
+echo -e "${YELLOW}🛑 To stop:${NC}    docker compose -f docker/docker-compose.yml down"
+echo -e "${YELLOW}📖 Logs:${NC}      docker compose -f docker/docker-compose.yml logs -f backend"
+echo -e "${YELLOW}🔌 With OPEA:${NC} ./deploy.sh --opea   (enables full OPEA microservice stack)"
 echo ""
