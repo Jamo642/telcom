@@ -15,8 +15,29 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
+def _resolve_default_db_path() -> str:
+    """Resolve a writable default DB path for both container and local runs."""
+    configured = os.environ.get("TELENOC_DB_PATH")
+    if configured:
+        return configured
+
+    container_path = "/data/telenoc.db"
+    container_dir = os.path.dirname(container_path)
+    try:
+        os.makedirs(container_dir, exist_ok=True)
+        if os.access(container_dir, os.W_OK):
+            return container_path
+    except Exception:
+        pass
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    local_dir = os.path.join(repo_root, "data")
+    os.makedirs(local_dir, exist_ok=True)
+    return os.path.join(local_dir, "telenoc.db")
+
+
 # Default database path
-DB_PATH = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db")
+DB_PATH = _resolve_default_db_path()
 
 
 @contextmanager

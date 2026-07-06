@@ -2,7 +2,7 @@
 Document and Alarm Log Ingestion for TeleNOC AI
 
 Handles ingestion of telecom alarm logs, network documents, and runbooks into:
-- ChromaDB vector store for semantic search
+- OPEA dataprep for document preparation and indexing
 - SQLite database for incident tracking
 - OPEA RAG pipeline for context retrieval
 
@@ -11,10 +11,12 @@ Supports batch loading from JSON, CSV, and text files.
 
 import os
 import json
-import csv
+import logging
+import tempfile
+from urllib import error, request
 import logging
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,49 @@ logger = logging.getLogger(__name__)
 # Default paths
 DEFAULT_DATA_DIR = "/data"
 DEFAULT_ALARMS_FILE = "/data/sample_alarms.json"
+DATAPREP_ENDPOINT = os.environ.get("DATAPREP_ENDPOINT", "http://dataprep:6007/v1/dataprep")
+
+
+def _upload_file_to_dataprep(filepath: str, collection_name: str = "telecom_knowledge_base") -> Dict[str, Any]:
+    """Upload a file to the OPEA dataprep service using multipart/form-data."""
+    boundary = "----TeleNOCBoundary7MA4YWxkTrZu0gW"
+    filename = os.path.basename(filepath)
+    with open(filepath, "rb") as file_handle:
+        file_data = file_handle.read()
+
+    parts = []
+    parts.append(f"--{boundary}\r\n".encode("utf-8"))
+    parts.append(
+        (
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: application/octet-stream\r\n\r\n"
+        ).encode("utf-8")
+    )
+    parts.append(file_data)
+    parts.append(f"\r\n--{boundary}--\r\n".encode("utf-8"))
+
+    payload = b"".join(parts)
+    http_request = request.Request(
+        DATAPREP_ENDPOINT,
+        data=payload,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+
+    try:
+        with request.urlopen(http_request, timeout=120) as response:
+            content = response.read().decode("utf-8")
+            try:
+                result = json.loads(content)
+            except Exception:
+                result = {"raw": content}
+            result.setdefault("status", "success")
+            result["collection_name"] = collection_name
+            return result
+    except error.HTTPError as exc:
+        return {"status": "error", "error": exc.reason, "code": exc.code}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
 
 
 def ingest_alarm_logs(
@@ -49,6 +94,11 @@ def ingest_alarm_logs(
             "error": f"File not found: {filepath}",
             "ingested": 0,
         }
+
+    # OPEA dataprep handles the raw alarm file ingestion for downstream RAG use.
+    dataprep_result = _upload_file_to_dataprep(filepath, collection_name="telecom_alarms")
+    if dataprep_result.get("status") == "error":
+        logger.warning("OPEA dataprep upload failed for alarm logs: %s", dataprep_result)
 
     # Load alarms
     try:
@@ -110,6 +160,7 @@ def ingest_alarm_logs(
         "ingested": ingested,
         "errors": errors,
         "total_in_file": len(alarms),
+        "dataprep": dataprep_result,
     }
 
 
@@ -118,23 +169,22 @@ def ingest_documents_to_vector_db(
     collection_name: str = "telecom_knowledge_base",
 ) -> Dict[str, Any]:
     """
-    Ingest telecom documents (runbooks, manuals, SOPs) into ChromaDB.
+    Ingest telecom documents (runbooks, manuals, SOPs) through OPEA dataprep.
     
     Supported file types: .md, .txt, .csv, .json
-    Each document is chunked and embedded for semantic search.
+    Each document is uploaded to OPEA dataprep for downstream embedding and retrieval.
     """
-    logger.info(f"Ingesting documents from {document_dir} into ChromaDB")
+    logger.info(f"Ingesting documents from {document_dir} through OPEA dataprep")
 
     doc_dir = Path(document_dir)
     if not doc_dir.exists():
         return {"status": "error", "error": f"Directory not found: {document_dir}"}
 
-    # Collect all documents
-    documents = []
-    metadatas = []
-    ids = []
+    uploaded = 0
+    errors = 0
+    dataprep_results = []
 
-    # Recursively find all supported files
+    # Recursively find all supported files and send each one to OPEA dataprep.
     for filepath in doc_dir.rglob("*"):
         if filepath.suffix not in (".md", ".txt", ".csv", ".json"):
             continue
@@ -142,94 +192,27 @@ def ingest_documents_to_vector_db(
             continue  # Skip alarm data, handled separately
 
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            if not content.strip():
-                continue
-
-            doc_id = f"{filepath.stem}_{filepath.stat().st_mtime_ns}"
-            metadata = {
-                "source": str(filepath.relative_to(doc_dir)),
-                "type": filepath.suffix[1:],
-                "ingested_at": datetime.utcnow().isoformat(),
-            }
-
-            # For long documents, chunk into sections
-            if len(content) > 1000:
-                sections = _chunk_document(content, filepath.suffix)
-                for i, section in enumerate(sections):
-                    section_id = f"{doc_id}_section_{i}"
-                    section_meta = {**metadata, "section": i}
-                    documents.append(section)
-                    metadatas.append(section_meta)
-                    ids.append(section_id)
+            result = _upload_file_to_dataprep(str(filepath), collection_name=collection_name)
+            dataprep_results.append({"file": str(filepath), "result": result})
+            if result.get("status") == "error":
+                errors += 1
             else:
-                documents.append(content)
-                metadatas.append(metadata)
-                ids.append(doc_id)
-
+                uploaded += 1
         except Exception as e:
             logger.warning(f"Error reading {filepath}: {e}")
-            continue
+            errors += 1
 
-    if not documents:
+    if not uploaded and not dataprep_results:
         return {"status": "success", "documents_ingested": 0, "message": "No documents found"}
 
-    # Use OPEA embedding service if available, otherwise use local embedding
-    try:
-        from services.embedding_service import get_embedding_service
-        embedding_service = get_embedding_service()
-        logger.info(f"Computing embeddings for {len(documents)} documents...")
-        embeddings = embedding_service.embed_batch(documents)
-        embeddings = [emb.tolist() for emb in embeddings]
-    except (ImportError, Exception) as e:
-        logger.warning(f"Embedding service unavailable: {e}")
-        embeddings = None
-
-    # Store to ChromaDB
-    try:
-        from services.retrieval_service import get_retrieval_service
-        retrieval = get_retrieval_service(collection_name=collection_name)
-        retrieval.add_documents(documents, metadatas, ids, embeddings=embeddings)
-        count = len(documents)
-        logger.info(f"Ingested {count} documents into {collection_name}")
-        return {"status": "success", "documents_ingested": count}
-    except (ImportError, Exception) as e:
-        logger.error(f"Failed to store documents: {e}")
-        return {"status": "error", "error": str(e), "documents_extracted": len(documents)}
-
-
-def _chunk_document(content: str, file_type: str) -> List[str]:
-    """
-    Chunk a long document into smaller sections.
-    Uses markdown headers, paragraphs, or fixed-size chunks.
-    """
-    chunks = []
-
-    if file_type == ".md":
-        # Split by markdown headers
-        import re
-        sections = re.split(r'\n(?=##?\s)', content)
-        for section in sections:
-            if section.strip():
-                chunks.append(section.strip())
-    else:
-        # Split by paragraphs
-        paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
-        current_chunk = ""
-        for para in paragraphs:
-            if len(current_chunk) + len(para) < 500:
-                current_chunk += "\n\n" + para if current_chunk else para
-            else:
-                if current_chunk:
-                    chunks.append(current_chunk)
-                current_chunk = para
-        if current_chunk:
-            chunks.append(current_chunk)
-
-    # Ensure minimum chunk size
-    return [c for c in chunks if len(c) > 50]
+    logger.info(f"Uploaded {uploaded} documents through OPEA dataprep")
+    return {
+        "status": "success",
+        "documents_ingested": uploaded,
+        "errors": errors,
+        "collection_name": collection_name,
+        "dataprep": dataprep_results,
+    }
 
 
 def load_sample_alarms(

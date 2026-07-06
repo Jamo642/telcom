@@ -51,6 +51,45 @@ P1_CONFIRMATION_COUNT = 2
 P1_CONFIRMATION_WINDOW = 300  # 5 minutes
 
 
+def _retrieve_rag_context(alarm_text: str, alarm_type: str, node_name: str) -> str:
+    """
+    Retrieve relevant incidents/manuals/logs from ChromaDB to ground the LLM prompt.
+    Returns empty string during bulk ingestion (SKIP_RAG=1) to avoid slow startup.
+    """
+    if os.environ.get("SKIP_RAG") == "1":
+        return ""
+    try:
+        import chromadb
+        from services.embedding_service import get_embedding_service
+
+        chroma_path = os.environ.get("CHROMA_DB_PATH", "/data/chroma_db")
+        if not os.path.exists(chroma_path):
+            chroma_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "data", "chroma_db"
+            )
+        client = chromadb.PersistentClient(path=chroma_path)
+        col    = client.get_collection("telecom_incidents")
+        emb    = get_embedding_service()
+        query  = f"{alarm_text} {alarm_type} {node_name}"
+        vec    = emb.embed_text(query).tolist()
+        hits   = col.query(
+            query_embeddings=[vec], n_results=3,
+            include=["documents", "metadatas", "distances"]
+        )
+        lines = []
+        for doc, meta, dist in zip(
+            hits["documents"][0], hits["metadatas"][0], hits["distances"][0]
+        ):
+            src = meta.get("source", "unknown")
+            lines.append(f"[{src}] (similarity={1-dist:.2f})\n{doc[:300]}")
+        ctx = "\n---\n".join(lines)
+        logger.info("RAG context retrieved: %d docs for severity classification", len(lines))
+        return ctx
+    except Exception as exc:
+        logger.debug("RAG context retrieval skipped: %s", exc)
+        return ""
+
+
 def classify_severity(
     alarm_text: str,
     alarm_type: str = "",
@@ -72,15 +111,18 @@ def classify_severity(
     """
     logger.info(f"Classifying severity for alarm: {alarm_text[:100]}...")
 
-    # Step 1: Try LLM-based classification (Groq or HuggingFace)
-    result = _llm_classify(alarm_text, alarm_type, node_name)
+    # Step 1: Retrieve RAG context from ChromaDB
+    rag_context = _retrieve_rag_context(alarm_text, alarm_type, node_name)
+
+    # Step 2: Try LLM-based classification grounded with RAG context
+    result = _llm_classify(alarm_text, alarm_type, node_name, rag_context=rag_context)
 
     # Step 2: If LLM fails or returns low confidence, use rule-based fallback
     if result.get("error") or result.get("confidence", 0) < 0.5:
         logger.info("LLM classification unreliable, using rule-based fallback")
         result = _rule_based_classify(alarm_text, alarm_type, node_name)
 
-    # Step 3: P1 confirmation check
+    # Step 4: P1 confirmation check
     if result["severity"] == "P1":
         if not _confirm_p1(alarm_text, node_name, recent_alarms):
             logger.info(f"P1 downgraded: insufficient confirmation for {alarm_text[:50]}")
@@ -90,7 +132,7 @@ def classify_severity(
         else:
             result["p1_confirmed"] = True
 
-    # Step 4: Set escalation metadata
+    # Step 5: Set escalation metadata
     result["escalate_to"] = SEVERITY_ESCALATE_TO.get(result["severity"], "Network Engineer")
     result["respond_within"] = SEVERITY_SLA.get(result["severity"], "4 hours")
     result["needs_review"] = result["confidence"] < CONFIDENCE_AUTO_THRESHOLD
@@ -98,30 +140,79 @@ def classify_severity(
     return result
 
 
-def _llm_classify(alarm_text: str, alarm_type: str, node_name: str) -> Dict[str, Any]:
+def _build_classify_prompt(
+    alarm_text: str, alarm_type: str, node_name: str, rag_context: str
+) -> str:
+    context_block = (
+        f"\nRELEVANT PAST INCIDENTS AND RUNBOOKS (retrieved from knowledge base):\n{rag_context}\n"
+        if rag_context else ""
+    )
+    return f"""You are a telecom NOC severity classification expert. Analyze this alarm and respond with a JSON object only.
+
+ALARM:
+{alarm_text}
+
+NODE: {node_name}
+TYPE: {alarm_type}
+{context_block}
+Classify severity as one of:
+- P1 (Critical): Service-impacting outage, multiple users affected, immediate response needed
+- P2 (Major): Significant degradation, partial service loss, urgent response needed
+- P3 (Minor): Some degradation, non-critical, standard response time
+- P4 (Warning): Informational, minimal impact, monitoring only
+
+Respond with ONLY this JSON structure (no other text):
+{{
+    "severity": "P1|P2|P3|P4",
+    "confidence": 0.0-1.0,
+    "root_cause": "brief root cause description",
+    "recommended_action": "first action to take",
+    "relevant_runbook": "NOC-SOP-XXX-XXX"
+}}"""
+
+
+def _llm_classify(
+    alarm_text: str,
+    alarm_type: str,
+    node_name: str,
+    rag_context: str = "",
+) -> Dict[str, Any]:
     """
-    Classify severity using available LLM API.
-    Priority: NVIDIA → Groq → HuggingFace → Ollama (via llm_service.py).
+    Classify severity using available LLM API, grounded with RAG context.
+    Priority: OpenRouter → NVIDIA → Groq → HuggingFace → Ollama.
     Falls back to rule-based if all fail.
-    Returns structured classification result.
     """
-    # Priority 1: Try NVIDIA API (primary AI provider for judges)
+    prompt = _build_classify_prompt(alarm_text, alarm_type, node_name, rag_context)
+
+    # Priority 1: OpenRouter (primary — free models)
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if openrouter_key:
+        try:
+            from services.llm_service import get_llm_service
+            llm = get_llm_service()
+            resp = llm._call_openrouter(prompt, temperature=0.1, max_tokens=300)
+            if not resp.get("error"):
+                return _parse_llm_response(resp.get("response", ""))
+        except Exception as e:
+            logger.warning(f"OpenRouter classify failed: {e}")
+
+    # Priority 2: Try NVIDIA API
     nvidia_api_key = os.environ.get("NVIDIA_API_KEY")
     if nvidia_api_key:
         try:
-            return _nvidia_classify(alarm_text, alarm_type, node_name, nvidia_api_key)
+            return _nvidia_classify(alarm_text, alarm_type, node_name, nvidia_api_key, rag_context)
         except Exception as e:
             logger.warning(f"NVIDIA API failed: {e}")
 
-    # Priority 2: Try Groq
+    # Priority 3: Try Groq
     groq_api_key = os.environ.get("GROQ_API_KEY")
     if groq_api_key:
         try:
-            return _groq_classify(alarm_text, alarm_type, node_name, groq_api_key)
+            return _groq_classify(alarm_text, alarm_type, node_name, groq_api_key, rag_context)
         except Exception as e:
             logger.warning(f"Groq API failed: {e}")
 
-    # Priority 3: Try HuggingFace
+    # Priority 4: Try HuggingFace
     hf_api_key = os.environ.get("HF_API_KEY")
     if hf_api_key:
         try:
@@ -129,14 +220,14 @@ def _llm_classify(alarm_text: str, alarm_type: str, node_name: str) -> Dict[str,
         except Exception as e:
             logger.warning(f"HuggingFace API failed: {e}")
 
-    # Priority 4: Try Ollama via llm_service (local fallback)
+    # Priority 5: Ollama local fallback
     try:
         from services.llm_service import get_llm_service
         llm = get_llm_service()
         if llm.is_available():
             result = llm.structured_reasoning(
                 incident=alarm_text,
-                context=f"NODE: {node_name}\nTYPE: {alarm_type}",
+                context=rag_context or f"NODE: {node_name}\nTYPE: {alarm_type}",
                 temperature=0.1,
                 provider="ollama",
             )
@@ -152,41 +243,16 @@ def _llm_classify(alarm_text: str, alarm_type: str, node_name: str) -> Dict[str,
     except Exception as e:
         logger.warning(f"Ollama classification failed: {e}")
 
-    # No API available
     return {"error": "No LLM API available", "confidence": 0}
 
 
 def _nvidia_classify(
-    alarm_text: str, alarm_type: str, node_name: str, api_key: str
+    alarm_text: str, alarm_type: str, node_name: str, api_key: str,
+    rag_context: str = ""
 ) -> Dict[str, Any]:
-    """
-    Call NVIDIA API for severity classification.
-    Uses Llama3-70B via NVIDIA's integrated API endpoint.
-    """
+    """Call NVIDIA API for severity classification."""
     import httpx
-
-    prompt = f"""You are a telecom NOC severity classification expert. Analyze this alarm and respond with a JSON object only.
-
-ALARM:
-{alarm_text}
-
-NODE: {node_name}
-TYPE: {alarm_type}
-
-Classify severity as one of:
-- P1 (Critical): Service-impacting outage, multiple users affected, immediate response needed
-- P2 (Major): Significant degradation, partial service loss, urgent response needed
-- P3 (Minor): Some degradation, non-critical, standard response time
-- P4 (Warning): Informational, minimal impact, monitoring only
-
-Respond with ONLY this JSON structure (no other text):
-{{
-    "severity": "P1|P2|P3|P4",
-    "confidence": 0.0-1.0,
-    "root_cause": "brief root cause description",
-    "recommended_action": "first action to take",
-    "relevant_runbook": "NOC-SOP-XXX-XXX"
-}}"""
+    prompt = _build_classify_prompt(alarm_text, alarm_type, node_name, rag_context)
 
     response = httpx.post(
         "https://integrate.api.nvidia.com/v1/chat/completions",
@@ -195,7 +261,7 @@ Respond with ONLY this JSON structure (no other text):
             "Content-Type": "application/json",
         },
         json={
-            "model": "meta/llama3-70b-instruct",
+            "model": "meta/llama-3.1-8b-instruct",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
             "max_tokens": 300,
@@ -211,36 +277,12 @@ Respond with ONLY this JSON structure (no other text):
 
 
 def _groq_classify(
-    alarm_text: str, alarm_type: str, node_name: str, api_key: str
+    alarm_text: str, alarm_type: str, node_name: str, api_key: str,
+    rag_context: str = ""
 ) -> Dict[str, Any]:
-    """
-    Call Groq API with Llama3-70B for severity classification.
-    Returns structured JSON with severity, confidence, root cause.
-    """
+    """Call Groq API with Llama3-70B for severity classification."""
     import httpx
-
-    prompt = f"""You are a telecom NOC severity classification expert. Analyze this alarm and respond with a JSON object only.
-
-ALARM:
-{alarm_text}
-
-NODE: {node_name}
-TYPE: {alarm_type}
-
-Classify severity as one of:
-- P1 (Critical): Service-impacting outage, multiple users affected, immediate response needed
-- P2 (Major): Significant degradation, partial service loss, urgent response needed
-- P3 (Minor): Some degradation, non-critical, standard response time
-- P4 (Warning): Informational, minimal impact, monitoring only
-
-Respond with ONLY this JSON structure (no other text):
-{{
-    "severity": "P1|P2|P3|P4",
-    "confidence": 0.0-1.0,
-    "root_cause": "brief root cause description",
-    "recommended_action": "first action to take",
-    "relevant_runbook": "NOC-SOP-XXX-XXX"
-}}"""
+    prompt = _build_classify_prompt(alarm_text, alarm_type, node_name, rag_context)
 
     response = httpx.post(
         "https://api.groq.com/openai/v1/chat/completions",

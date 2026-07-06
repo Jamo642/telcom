@@ -1,34 +1,22 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════
-# TeleNOC AI - One-Click Deployment Script
+# TeleNOC AI - Deployment Script
 # ═══════════════════════════════════════════════════════════════════
-# 
+#
 # Usage:
-#   ./deploy.sh              # Deploy with NVIDIA API (recommended for judges)
-#   NVIDIA_API_KEY="" ./deploy.sh  # Deploy with Ollama fallback only
+#   ./deploy.sh
 #
 # Prerequisites:
 #   - Docker & Docker Compose
-#   - 4-core CPU, 8GB RAM minimum
-#   - Internet connection (for API-based AI inference)
-#
-# This script will:
-#   1. Check prerequisites
-#   2. Create .env from .env.example if needed
-#   3. Start all Docker services
-#   4. Initialize database
-#   5. Ingest sample alarm data
-#   6. Print access URLs
+#   - OPENROUTER_API_KEY set in .env (get a free key at openrouter.ai)
 # ═══════════════════════════════════════════════════════════════════
 
 set -e
 
-# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -41,7 +29,7 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 # ─── Step 1: Prerequisites ────────────────────────────────────────────
-echo -e "${YELLOW}[1/6] Checking prerequisites...${NC}"
+echo -e "${YELLOW}[1/5] Checking prerequisites...${NC}"
 
 if ! command -v docker &> /dev/null; then
     echo -e "${RED}❌ Docker is not installed.${NC}"
@@ -55,86 +43,92 @@ if ! docker compose version &> /dev/null; then
 fi
 
 if ! docker ps &> /dev/null; then
-    echo -e "${RED}❌ Docker daemon is not running.${NC}"
+    echo -e "${RED}❌ Docker daemon is not running. Please start Docker first.${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✅ Docker and Docker Compose found${NC}"
+echo -e "${GREEN}✅ Docker and Docker Compose ready${NC}"
 echo ""
 
 # ─── Step 2: Environment Configuration ────────────────────────────────
-echo -e "${YELLOW}[2/6] Configuring environment...${NC}"
+echo -e "${YELLOW}[2/5] Configuring environment...${NC}"
 
 if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
         cp .env.example .env
         echo -e "${GREEN}✅ .env created from .env.example${NC}"
-        echo -e "${YELLOW}   📝 Edit .env to add your API keys if needed${NC}"
     fi
-else
-    echo -e "${GREEN}✅ .env already exists${NC}"
 fi
 
-# Source .env if it exists
+# Source .env
 if [ -f ".env" ]; then
     set -a
     source .env
     set +a
 fi
 
-# Check for AI provider
-if [ -n "$NVIDIA_API_KEY" ]; then
-    echo -e "${GREEN}✅ NVIDIA API key found — using NVIDIA AI as primary provider${NC}"
+# Check for AI provider key
+if [ -n "$OPENROUTER_API_KEY" ] && [ "$OPENROUTER_API_KEY" != "your_openrouter_api_key_here" ]; then
+    echo -e "${GREEN}✅ OpenRouter API key found — using OpenRouter as primary LLM${NC}"
+    export LLM_PROVIDER=openrouter
 elif [ -n "$GROQ_API_KEY" ]; then
-    echo -e "${GREEN}✅ Groq API key found — using Groq as primary provider${NC}"
+    echo -e "${GREEN}✅ Groq API key found — using Groq as primary LLM${NC}"
+    export LLM_PROVIDER=groq
+elif [ -n "$NVIDIA_API_KEY" ]; then
+    echo -e "${GREEN}✅ NVIDIA API key found — using NVIDIA as primary LLM${NC}"
+    export LLM_PROVIDER=nvidia
 else
-    echo -e "${YELLOW}⚠️  No API keys found. Will use Ollama (local fallback).${NC}"
-    echo -e "${YELLOW}   To use NVIDIA AI (recommended), set NVIDIA_API_KEY in .env${NC}"
+    echo -e "${YELLOW}⚠️  No API key found. Falling back to local Ollama (slower, needs ~4GB download).${NC}"
+    echo -e "${YELLOW}   Add OPENROUTER_API_KEY to .env for instant startup (free at openrouter.ai).${NC}"
+    export LLM_PROVIDER=ollama
 fi
 echo ""
 
-# ─── Step 3: Clean Up Old Containers ─────────────────────────────────
-echo -e "${YELLOW}[3/6] Cleaning up old containers...${NC}"
+# ─── Step 3: Clean Up & Start Services ───────────────────────────────
+echo -e "${YELLOW}[3/5] Cleaning up old containers...${NC}"
 docker compose -f docker/docker-compose.yml down --remove-orphans 2>/dev/null || true
 echo -e "${GREEN}✅ Old containers cleaned${NC}"
 echo ""
 
-# ─── Step 4: Start Services ──────────────────────────────────────────
-echo -e "${YELLOW}[4/6] Starting Docker services...${NC}"
-echo -e "${BLUE}   This will start: ChromaDB, Ollama, Backend, UI${NC}"
+echo -e "${YELLOW}[4/5] Building and starting services...${NC}"
+echo -e "${BLUE}   Services: Redis, Backend (FastAPI + ChromaDB RAG + MITRE FiGHT), UI${NC}"
 echo ""
 
-# Start all services
-docker compose -f docker/docker-compose.yml up -d 2>&1 | tail -3
-echo -e "${GREEN}✅ All services started${NC}"
+# Build backend image
+docker compose -f docker/docker-compose.yml build backend 2>&1 | grep -E "^#|Building|built|error" || true
+
+# Start services — include ollama profile only when needed
+if [ "$LLM_PROVIDER" = "ollama" ]; then
+    COMPOSE_PROFILES=ollama docker compose -f docker/docker-compose.yml up -d
+else
+    docker compose -f docker/docker-compose.yml up -d
+fi
+
+echo -e "${GREEN}✅ Services started${NC}"
 echo ""
 
-# ─── Step 5: Wait for Backend ────────────────────────────────────────
-echo -e "${YELLOW}[5/6] Waiting for backend to be ready...${NC}"
+# ─── Step 4: Wait for Backend ────────────────────────────────────────
+echo -e "${YELLOW}[5/5] Waiting for backend to be ready...${NC}"
 
 BACKEND_READY=false
 for i in $(seq 1 60); do
     if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Backend is ready (attempt $i)${NC}"
+        echo -e "${GREEN}✅ Backend is ready${NC}"
         BACKEND_READY=true
         break
     fi
-    if [ $((i % 10)) -eq 0 ]; then
-        echo -n "."
-    fi
+    echo -n "."
     sleep 2
 done
-
-if [ "$BACKEND_READY" = false ]; then
-    echo -e "${RED}❌ Backend failed to start${NC}"
-    docker compose -f docker/docker-compose.yml logs backend --tail 20
-    exit 1
-fi
 echo ""
 
-# ─── Step 6: Ingest Sample Data ──────────────────────────────────────
-echo -e "${YELLOW}[6/6] Ingesting sample alarm data...${NC}"
+if [ "$BACKEND_READY" = false ]; then
+    echo -e "${RED}❌ Backend failed to start. Showing logs:${NC}"
+    docker compose -f docker/docker-compose.yml logs backend --tail 30
+    exit 1
+fi
 
+# ─── Step 5: Ingest Sample Data ──────────────────────────────────────
 INGEST_RESULT=$(curl -s -X POST http://localhost:8000/ingest \
     -H "Content-Type: application/json" \
     -d '{"filepath": "/data/sample_alarms.json"}' 2>&1)
@@ -142,8 +136,41 @@ INGEST_RESULT=$(curl -s -X POST http://localhost:8000/ingest \
 INGESTED=$(echo "$INGEST_RESULT" | grep -o '"ingested":[0-9]*' | cut -d: -f2)
 if [ -n "$INGESTED" ] && [ "$INGESTED" -gt 0 ]; then
     echo -e "${GREEN}✅ Ingested $INGESTED sample alarms${NC}"
+fi
+
+# ─── Step 6: Ensure MITRE FiGHT techniques are in ChromaDB ──────────
+# Check by counting fight_techniques.json entries vs chroma — fast, no model load
+FIGHT_JSON_COUNT=$(docker compose -f docker/docker-compose.yml exec -T backend \
+    python3 -c "
+import json, pathlib
+p = pathlib.Path('/data/fight_techniques.json')
+print(len(json.loads(p.read_text())) if p.exists() else 0)
+" 2>/dev/null)
+
+CHROMA_FIGHT_COUNT=$(docker compose -f docker/docker-compose.yml exec -T backend \
+    python3 -c "
+import sys; sys.path.insert(0,'/app')
+try:
+    import chromadb
+    c = chromadb.PersistentClient(path='/data/chroma_db')
+    col = c.get_collection('telecom_incidents')
+    print(len(col.get(where={'source':'mitre_fight'})['ids']))
+except Exception:
+    print(0)
+" 2>/dev/null)
+
+if [ "${CHROMA_FIGHT_COUNT:-0}" -lt "${FIGHT_JSON_COUNT:-1}" ] 2>/dev/null; then
+    echo -e "${YELLOW}   Embedding MITRE FiGHT techniques into ChromaDB (offline mode)...${NC}"
+    docker compose -f docker/docker-compose.yml exec -T \
+        -e CHROMA_DB_PATH=/data/chroma_db \
+        -e FIGHT_JSON=/data/fight_techniques.json \
+        -e TRANSFORMERS_OFFLINE=1 \
+        -e HF_DATASETS_OFFLINE=1 \
+        -e SENTENCE_TRANSFORMERS_HOME=/root/.cache/torch/sentence_transformers \
+        backend python3 /app/scripts/ingest_fight.py 2>&1 | grep -v "telemetry\|hugging\|Retry\|warned" | tail -6
+    echo -e "${GREEN}✅ MITRE FiGHT techniques embedded${NC}"
 else
-    echo -e "${YELLOW}⚠️  Ingestion result: $INGEST_RESULT${NC}"
+    echo -e "${GREEN}✅ MITRE FiGHT already in ChromaDB (${CHROMA_FIGHT_COUNT}/${FIGHT_JSON_COUNT} techniques)${NC}"
 fi
 
 echo ""
@@ -151,22 +178,12 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║           ✅ DEPLOYMENT COMPLETE!                ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${BLUE}📡 TeleNOC AI is now running!${NC}"
+echo -e "${CYAN}   🖥️  Dashboard:      http://localhost:8080${NC}"
+echo -e "${CYAN}   🔧 API:            http://localhost:8000${NC}"
+echo -e "${CYAN}   📚 API Docs:       http://localhost:8000/docs${NC}"
+echo -e "${CYAN}   🤖 Agent Chat:     POST http://localhost:8000/agent/chat${NC}"
+echo -e "${CYAN}   🛡️  FiGHT Engine:  detect_fight_techniques tool via agent${NC}"
 echo ""
-echo -e "${CYAN}   🖥️  Dashboard:    http://localhost:8080${NC}"
-echo -e "${CYAN}   🔧 API:          http://localhost:8000${NC}"
-echo -e "${CYAN}   📚 API Docs:     http://localhost:8000/docs${NC}"
-echo -e "${CYAN}   💾 ChromaDB:     http://localhost:8001${NC}"
-echo ""
-echo -e "${YELLOW}📋 Quick Demo:${NC}"
-echo -e "   1. Open ${CYAN}http://localhost:8080${NC} in your browser"
-echo -e "   2. Click '📥 Ingest All 50 Sample Alarms'"
-echo -e "   3. Use the Diagnose tab to analyze alarms"
-echo -e "   4. Check Incidents, MTTR, Trends, and Escalations tabs"
-echo ""
-echo -e "${YELLOW}🛑 To stop all services:${NC}"
-echo -e "   docker compose -f docker/docker-compose.yml down -v"
-echo ""
-echo -e "${YELLOW}📖 To view logs:${NC}"
-echo -e "   docker compose -f docker/docker-compose.yml logs -f backend"
+echo -e "${YELLOW}🛑 To stop:${NC} docker compose -f docker/docker-compose.yml down"
+echo -e "${YELLOW}📖 Logs:${NC}   docker compose -f docker/docker-compose.yml logs -f backend"
 echo ""

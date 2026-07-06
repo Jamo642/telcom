@@ -20,13 +20,14 @@ wheels/
 *.egg
 MANIFEST
 .env
+**/.env
+secrets.txt
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
-chroma_db/
 data/chroma_db/
 ollama_data/
 *.log

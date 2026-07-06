@@ -1,0 +1,172 @@
+{
+  "FGT1557": {
+    "technique_id": "FGT1557",
+    "name": "Network Sniffing on 5G Core",
+    "tactic": "Collection",
+    "description": "Adversaries may sniff network traffic on the 5G core to capture sensitive data. The 5GC uses N1-N14 interfaces; unencrypted or weakly encrypted control-plane traffic can be intercepted between NFs.",
+    "indicators": [
+      "promiscuous mode on SBI interface",
+      "unexpected pcap or tcpdump process on NF host",
+      "high volume outbound traffic from AMF/SMF/UPF",
+      "packet capture files in unusual directories",
+      "anomalous CPU spike on NF coinciding with traffic burst"
+    ],
+    "precursor_technique_ids": ["FGT1078", "FGT1190"],
+    "detection_guidance": "Monitor for promiscuous-mode changes on 5GC network interfaces. Alert on execution of packet capture utilities (tcpdump, tshark) on NF hosts. Correlate outbound data volume anomalies with SBI interface activity.",
+    "mitigation_guidance": "Enforce mutual TLS (mTLS) on all 5GC SBI interfaces (3GPP TS 33.501). Deploy NF-level process whitelisting. Segment control-plane traffic from management interfaces.",
+    "kill_chain_phase": "collection"
+  },
+  "FGT1078": {
+    "technique_id": "FGT1078",
+    "name": "Valid Accounts - 5G NF Service Account Abuse",
+    "tactic": "Initial Access / Persistence",
+    "description": "Adversaries abuse valid NF service accounts or OAuth2 tokens on the Service Based Interface (SBI) to authenticate to NFs without triggering standard IDS alerts.",
+    "indicators": [
+      "NF service account login from unexpected source IP",
+      "OAuth2 token reuse outside expected NF-to-NF pattern",
+      "access to NRF without prior registration flow",
+      "repeated token requests for same NF within short window",
+      "service account used outside business hours"
+    ],
+    "precursor_technique_ids": [],
+    "detection_guidance": "Baseline NF-to-NF OAuth2 token exchange patterns. Alert on tokens used from unexpected source NFs or IPs. Monitor NRF registration anomalies.",
+    "mitigation_guidance": "Rotate NF service account credentials regularly. Enforce certificate-based mutual authentication. Implement token binding to source NF identity.",
+    "kill_chain_phase": "initial_access"
+  },
+  "FGT1190": {
+    "technique_id": "FGT1190",
+    "name": "Exploit Public-Facing Application - N2/N4 Interface",
+    "tactic": "Initial Access",
+    "description": "Adversaries exploit vulnerabilities in N2 (AMF-RAN) or N4 (SMF-UPF) interface implementations to gain initial foothold in the 5G core.",
+    "indicators": [
+      "malformed NGAP messages to AMF",
+      "unexpected PFCP session establishment from unknown peer",
+      "buffer overflow pattern in N4 message parsing logs",
+      "crash-restart loop on AMF or SMF process",
+      "unknown source IP sending N2/N4 control messages"
+    ],
+    "precursor_technique_ids": [],
+    "detection_guidance": "Deploy deep-packet inspection on N2/N4 interfaces. Alert on NGAP/PFCP message anomalies, unexpected source IPs, and NF crash-restart patterns.",
+    "mitigation_guidance": "Apply vendor patches for N2/N4 interface parsers. Enforce IP allowlisting for N2/N4 peers. Enable NGAP/PFCP message rate-limiting.",
+    "kill_chain_phase": "initial_access"
+  },
+  "FGT1499": {
+    "technique_id": "FGT1499",
+    "name": "Endpoint Denial of Service - SCTP Flood on N2",
+    "tactic": "Impact",
+    "description": "Adversaries send a flood of SCTP INIT or DATA chunks to overwhelm the N2 (AMF) interface, preventing legitimate gNBs from registering UEs and causing denial of service.",
+    "indicators": [
+      "SCTP INIT flood from single or rotating source IPs",
+      "AMF connection table exhaustion",
+      "gNB registration failures spiking above baseline",
+      "SCTP retransmit storm in N2 interface logs",
+      "AMF CPU above 90% with no corresponding legitimate traffic"
+    ],
+    "precursor_technique_ids": ["FGT1595"],
+    "detection_guidance": "Monitor SCTP connection rates on N2 interface. Alert on INIT flood patterns. Track gNB registration failure rates against baseline. Correlate with source IP reputation.",
+    "mitigation_guidance": "Enable SCTP cookie mechanism on AMF. Deploy rate-limiting for SCTP INIT messages. Implement IP reputation filtering at network perimeter.",
+    "kill_chain_phase": "impact"
+  },
+  "FGT1595": {
+    "technique_id": "FGT1595",
+    "name": "Active Scanning - 5G Network Enumeration",
+    "tactic": "Reconnaissance",
+    "description": "Adversaries probe the 5G network to discover NF endpoints, slice configurations, and PLMN parameters by sending crafted NAS or SBI probe messages.",
+    "indicators": [
+      "port scan targeting SBI port 443 across multiple NF IPs",
+      "NAS registration requests with invalid IMSI patterns",
+      "NRF query flood for NF profiles",
+      "repeated HTTP OPTIONS on SBI endpoints",
+      "systematic probing of AMF discovery endpoints"
+    ],
+    "precursor_technique_ids": [],
+    "detection_guidance": "Alert on systematic SBI endpoint probing. Monitor NRF for bulk profile query anomalies. Detect NAS registration patterns with invalid IMSI ranges.",
+    "mitigation_guidance": "Implement rate-limiting on NRF discovery. Enforce NF authentication before profile disclosure. Deploy honeypot NF endpoints.",
+    "kill_chain_phase": "reconnaissance"
+  },
+  "FGT5019": {
+    "technique_id": "FGT5019",
+    "name": "SS7 Location Tracking via MAP-SRI",
+    "tactic": "Collection",
+    "description": "Adversary sends a MAP Send-Routing-Information (SRI) query through the SS7 network to obtain the IMSI and serving MSC address of a target subscriber, enabling location tracking.",
+    "indicators": [
+      "MAP-SRI request from unexpected GT address",
+      "bulk SRI queries targeting sequential MSISDNs",
+      "SRI response returned to non-home PLMN address",
+      "HLR/HSS query volume spike from external SS7 peer",
+      "SRI origination from known roaming partner without active roamers"
+    ],
+    "precursor_technique_ids": ["FGT5020"],
+    "detection_guidance": "Deploy SS7 firewall with MAP-SRI rate limiting and GT validation. Alert on SRI originating from non-whitelisted GT addresses. Correlate bulk SRI with absence of legitimate roaming sessions.",
+    "mitigation_guidance": "Deploy GSMA FS.11/FS.19 compliant SS7 firewall. Block MAP-SRI from non-authorized GTs. Implement IMSI and MSISDN rate-limiting per peer.",
+    "kill_chain_phase": "collection"
+  },
+  "FGT5020": {
+    "technique_id": "FGT5020",
+    "name": "SS7 Network Reconnaissance via MAP-SAI",
+    "tactic": "Reconnaissance",
+    "description": "Adversary sends MAP Send-Authentication-Info (SAI) requests to enumerate authentication vectors from the HLR/HSS, useful for later SIM cloning or authentication attacks.",
+    "indicators": [
+      "MAP-SAI request from non-home network GT",
+      "bulk SAI queries for multiple IMSIs",
+      "SAI response containing authentication triplets sent externally",
+      "SAI origination outside expected authentication flow",
+      "repeated SAI retries after rejection"
+    ],
+    "precursor_technique_ids": [],
+    "detection_guidance": "Monitor MAP-SAI message rates from external peers. Alert on SAI requests not correlated with active call or location update. Block SAI responses to non-authorized GTs.",
+    "mitigation_guidance": "Deploy SS7 application firewall blocking unauthorized SAI. Implement authentication vector response filtering. Upgrade to Diameter/5G AKA where possible.",
+    "kill_chain_phase": "reconnaissance"
+  },
+  "FGT5021": {
+    "technique_id": "FGT5021",
+    "name": "GTP-C Tunnel Hijacking",
+    "tactic": "Lateral Movement",
+    "description": "Adversary injects or replays GTPv2-C messages on the S11/S5/S8 interfaces to hijack existing PDP/PDN contexts, redirecting user traffic or denying service.",
+    "indicators": [
+      "GTPv2 Create Session Request with mismatched TEID",
+      "unexpected Modify Bearer Request from non-serving SGW",
+      "TEID collision rate above threshold",
+      "GTP-C message from unknown peer IP on S11 interface",
+      "sudden subscriber session migration without TAU procedure"
+    ],
+    "precursor_technique_ids": ["FGT1595", "FGT1190"],
+    "detection_guidance": "Monitor GTPv2-C for TEID anomalies and unexpected peer IPs. Alert on Create/Modify Session messages outside expected SGW/PGW peer list. Deploy GTP firewall with state tracking.",
+    "mitigation_guidance": "Enforce GTP peer IP allowlisting. Enable GTP-C message integrity protection where supported. Deploy GTP firewall (3GPP TS 33.210). Segment S11/S5/S8 on dedicated VLAN.",
+    "kill_chain_phase": "lateral_movement"
+  },
+  "FGT1110": {
+    "technique_id": "FGT1110",
+    "name": "Brute Force - 5G AKA / EAP-AKA Authentication",
+    "tactic": "Credential Access",
+    "description": "Adversary attempts to brute-force 5G-AKA or EAP-AKA authentication challenges by replaying or mutating AUTN/RAND values to derive subscriber keys or cause authentication failures.",
+    "indicators": [
+      "authentication failure rate above 5% per subscriber",
+      "repeated RAND values in authentication requests",
+      "MAC failure responses from UE spiking",
+      "AUTN mismatch errors concentrated on specific IMSIs",
+      "authentication request flood from single RAN node"
+    ],
+    "precursor_technique_ids": ["FGT5020"],
+    "detection_guidance": "Track per-IMSI authentication failure rates. Alert on RAND value reuse patterns. Monitor MAC/AUTN failure rates from individual RAN nodes.",
+    "mitigation_guidance": "Implement per-IMSI authentication rate limiting. Deploy SUCI (Subscription Concealed Identifier) to protect IMSI. Enable AUSF anomaly detection.",
+    "kill_chain_phase": "credential_access"
+  },
+  "FGT1583": {
+    "technique_id": "FGT1583",
+    "name": "Acquire Infrastructure - Rogue gNB / Base Station",
+    "tactic": "Resource Development",
+    "description": "Adversary deploys a rogue 5G base station (gNB) to intercept UE traffic, perform IMSI catching, or inject downgrade attacks to 4G/3G.",
+    "indicators": [
+      "gNB registration from unauthorized IP/certificate",
+      "UE reporting unexpected serving cell identity",
+      "ARFCN/PCI not in planned network inventory",
+      "N2 NGAP Setup Request from unknown gNB IP",
+      "unusual PLMN broadcast in cell system information"
+    ],
+    "precursor_technique_ids": [],
+    "detection_guidance": "Maintain gNB IP and certificate allowlist. Alert on N2 NGAP Setup from unknown sources. Deploy UE-reported cell identity anomaly detection. Monitor RF environment for rogue cell broadcasts.",
+    "mitigation_guidance": "Enforce gNB certificate-based mutual authentication on N2. Deploy SON (Self-Organising Network) rogue cell detection. Use network-side IMSI catcher detection algorithms.",
+    "kill_chain_phase": "resource_development"
+  }
+}

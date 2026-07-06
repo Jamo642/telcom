@@ -17,6 +17,7 @@ import time
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
+from urllib import error, request
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,11 +41,11 @@ app = FastAPI(
     version="2.0.0",
 )
 
-# Add CORS middleware
+# Add CORS middleware — allow UI on :8080 to call API on :8000
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -77,6 +78,11 @@ class ResolveRequest(BaseModel):
     """Resolve an incident"""
     alarm_id: str
     resolution_notes: str = ""
+
+class AgentChatRequest(BaseModel):
+    """Agent chat request — drives the tool-using agent loop"""
+    query: str
+    session_id: Optional[str] = None
 
 
 # ─── Startup Event ────────────────────────────────────────────────────────────
@@ -114,6 +120,38 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "version": "2.0.0",
     }
+
+
+@app.get("/opea/health")
+async def opea_health_check():
+    """Check reachability of the OPEA microservices used by TeleNOC."""
+    services = {
+        "embedding": _probe_service(os.environ.get("EMBEDDING_SERVICE_HOST", "embedding"), os.environ.get("EMBEDDING_SERVICE_PORT", "6000")),
+        "retriever": _probe_service(os.environ.get("RETRIEVER_SERVICE_HOST", "retriever"), os.environ.get("RETRIEVER_SERVICE_PORT", "7000")),
+        "dataprep": _probe_service(os.environ.get("DATAPREP_SERVICE_HOST", "dataprep"), os.environ.get("DATAPREP_SERVICE_PORT", "6007")),
+        "chatqna": _probe_service(os.environ.get("CHATQNA_SERVICE_HOST", "chatqna"), os.environ.get("CHATQNA_SERVICE_PORT", "8888")),
+    }
+
+    overall_status = "healthy" if all(entry["healthy"] for entry in services.values()) else "degraded"
+    return {
+        "status": overall_status,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "services": services,
+    }
+
+
+def _probe_service(host: str, port: str) -> Dict[str, Any]:
+    """Probe an OPEA service health endpoint."""
+    base_url = f"http://{host}:{port}"
+    for path in ("/health", "/v1/health"):
+        try:
+            http_request = request.Request(f"{base_url}{path}", method="GET")
+            with request.urlopen(http_request, timeout=5) as response:
+                if response.status == 200:
+                    return {"healthy": True, "url": f"{base_url}{path}"}
+        except Exception:
+            continue
+    return {"healthy": False, "url": base_url}
 
 
 # ─── Diagnosis Endpoints ──────────────────────────────────────────────────────
@@ -422,11 +460,21 @@ async def resolve_incident(alarm_id: str, request: ResolveRequest):
 async def ingest_alarms(filepath: str = "/data/sample_alarms.json"):
     """
     Ingest alarm logs from a JSON file already on the server.
-    Processes each alarm through the full diagnosis pipeline.
+    Skips RAG context during bulk ingestion to keep startup fast.
+    RAG is used for live single-alarm diagnosis and the agent.
     """
+    import asyncio
     try:
         from backend.ingest import ingest_alarm_logs
-        result = ingest_alarm_logs(filepath=filepath)
+
+        def _run():
+            os.environ["SKIP_RAG"] = "1"
+            try:
+                return ingest_alarm_logs(filepath=filepath)
+            finally:
+                os.environ.pop("SKIP_RAG", None)
+
+        result = await asyncio.to_thread(_run)
         return {
             "status": result["status"],
             "result": result,
@@ -585,6 +633,49 @@ async def get_dashboard_data():
     except Exception as e:
         logger.error(f"Dashboard data failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Agent Chat Endpoint ─────────────────────────────────────────────────────
+
+@app.post("/agent/chat")
+async def agent_chat(request: AgentChatRequest):
+    """
+    Tool-using agent endpoint.
+
+    Runs the NOC agent loop: the LLM decides which tools to call
+    (get_active_alerts, get_logs, lookup_incident, search_knowledge_base),
+    executes them against real data, and iterates until it has a final answer.
+
+    Returns the final answer plus a full reasoning trace (which tools were
+    called, with what arguments, and what they returned).
+    """
+    if not request.query.strip():
+        raise HTTPException(status_code=400, detail="query must not be empty")
+
+    logger.info("Agent chat request: %s", request.query[:120])
+
+    try:
+        import asyncio
+        import re
+        from backend.noc_agent import run_agent
+
+        # run_agent is synchronous (uses urllib) — run in thread to avoid blocking
+        result = await asyncio.to_thread(run_agent, request.query, request.session_id)
+        # Strip model citation artifacts some LLMs inject (e.g. 【{"id":0}】)
+        answer = re.sub(r'[\u3010\u3011][^】]*[\u3010\u3011]?', '', result["answer"]).strip()
+        answer = re.sub(r'\s{2,}', ' ', answer)
+        return {
+            "status":     "success",
+            "answer":     answer,
+            "trace":      result["trace"],
+            "iterations": result["iterations"],
+            "model":      result["model"],
+            "session_id": result["session_id"],
+            "timestamp":  datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as exc:
+        logger.error("Agent chat failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────

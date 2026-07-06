@@ -57,7 +57,7 @@ def diagnose_alarm(
     alarm: Dict[str, Any],
     recent_alarms: Optional[List[Dict[str, Any]]] = None,
     language: str = "en",
-    db_path: str = "/data/telenoc.db",
+    db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Master diagnosis pipeline for a single alarm.
@@ -85,6 +85,20 @@ def diagnose_alarm(
             "filter_reason": str
         }
     """
+    try:
+        from backend.database import DB_PATH as DEFAULT_DB_PATH
+    except Exception:
+        DEFAULT_DB_PATH = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db")
+
+    db_path = db_path or os.environ.get("TELENOC_DB_PATH", DEFAULT_DB_PATH)
+
+    try:
+        from backend.database import init_db
+
+        init_db(db_path=db_path)
+    except Exception as exc:
+        logger.warning("Database initialization check failed: %s", exc)
+
     alarm_id = alarm.get("alarm_id", "ALM-UNKNOWN")
     alarm_text = alarm.get("alarm_text", "")
     node_name = alarm.get("node_name", "")
@@ -256,23 +270,33 @@ def diagnose_alarm(
     # ═══════════════════════════════════════════════════════════════════
 
     try:
-        from backend.database import log_incident
+        from backend.database import get_incident_by_alarm_id, log_incident
         # Log incident to database first
-        incident = log_incident(
-            alarm_id=alarm_id,
-            alarm_name=alarm.get("alarm_name", ""),
-            node_name=node_name,
-            alarm_type=alarm_type,
-            severity=result["severity"],
-            confidence=result["confidence"],
-            root_cause=result["root_cause"],
-            recommended_action=result["recommended_action"],
-            relevant_runbook=result["relevant_runbook"],
-            escalate_to=result["escalate_to"],
-            respond_within=result["respond_within"],
-            raw_alarm_text=alarm_text,
-            db_path=db_path,
-        )
+        try:
+            incident = log_incident(
+                alarm_id=alarm_id,
+                alarm_name=alarm.get("alarm_name", ""),
+                node_name=node_name,
+                alarm_type=alarm_type,
+                severity=result["severity"],
+                confidence=result["confidence"],
+                root_cause=result["root_cause"],
+                recommended_action=result["recommended_action"],
+                relevant_runbook=result["relevant_runbook"],
+                escalate_to=result["escalate_to"],
+                respond_within=result["respond_within"],
+                raw_alarm_text=alarm_text,
+                db_path=db_path,
+            )
+        except Exception:
+            incident = get_incident_by_alarm_id(alarm_id, db_path=db_path)
+
+        if not incident:
+            result["escalation"] = {
+                "should_escalate": False,
+                "reason": "Incident persistence unavailable; escalation check skipped",
+            }
+            return _finalize(result, lang)
 
         # Check escalation
         from backend.escalation import check_escalation
@@ -280,7 +304,7 @@ def diagnose_alarm(
         result["escalation"] = escalation_result
 
         # If escalation needed, update escalate_to
-        if escalation_result.get("should_escalate"):
+        if escalation_result.get("should_escalate") and incident.get("id"):
             from backend.database import create_escalation
             create_escalation(
                 incident_id=incident["id"],
@@ -374,7 +398,7 @@ def _translate_to_swahili(result: Dict[str, Any]) -> Dict[str, Any]:
 def diagnose_batch(
     alarms: List[Dict[str, Any]],
     language: str = "en",
-    db_path: str = "/data/telenoc.db",
+    db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Diagnose multiple alarms in batch.
@@ -387,6 +411,13 @@ def diagnose_batch(
     Returns:
         List of structured diagnosis results
     """
+    try:
+        from backend.database import DB_PATH as DEFAULT_DB_PATH
+    except Exception:
+        DEFAULT_DB_PATH = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db")
+
+    db_path = db_path or os.environ.get("TELENOC_DB_PATH", DEFAULT_DB_PATH)
+
     logger.info(f"Batch diagnosing {len(alarms)} alarms")
 
     results = []

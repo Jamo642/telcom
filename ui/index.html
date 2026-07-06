@@ -181,9 +181,8 @@
         <!-- Tab Bar -->
         <div class="tab-bar">
             <button class="active" onclick="switchTab('diagnose')">🔍 Diagnose</button>
-            <button onclick="switchTab('incidents')">📋 Incidents</button>
-            <button onclick="switchTab('mttr')">⏱ MTTR</button>
-            <button onclick="switchTab('trends')">📈 Trends</button>
+            <button onclick="switchTab('agent')">🤖 AI Agent</button>
+            <button onclick="switchTab('fight')">🛡️ FiGHT</button>
             <button onclick="switchTab('escalations')">🔔 Escalations</button>
         </div>
 
@@ -249,38 +248,62 @@
             </div>
         </div>
 
-        <!-- Incidents Tab -->
-        <div id="tab-incidents" class="tab-content">
-            <div class="card">
-                <div class="card-header">📋 Recent Incidents</div>
-                <div class="card-body">
-                    <div class="filter-row">
-                        <select id="incidentFilterStatus"><option value="">All Status</option><option value="open">Open</option><option value="resolved">Resolved</option><option value="escalated">Escalated</option></select>
-                        <select id="incidentFilterSeverity"><option value="">All Severity</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option><option value="P4">P4</option></select>
-                        <input type="text" id="incidentFilterNode" placeholder="Filter by node...">
-                        <button class="btn btn-secondary" onclick="loadIncidents()">Filter</button>
+        <!-- Agent Chat Tab -->
+        <div id="tab-agent" class="tab-content">
+            <div class="card" style="max-width:900px;margin:0 auto">
+                <div class="card-header" style="justify-content:space-between">
+                    <span>🤖 TeleNOC AI Agent — Multi-Step Tool-Using Chat</span>
+                    <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="clearChat()">Clear</button>
+                </div>
+                <div class="card-body" id="chatMessages" style="max-height:480px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px">
+                    <div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:32px 0">
+                        Ask anything about your NOC — the agent will use live tools to answer.<br>
+                        <span style="font-size:12px;opacity:0.7">e.g. "What BGP issues are open and what do the logs say?" &nbsp;|&nbsp; "Are there any SS7 threats in current alerts?"</span>
                     </div>
-                    <div id="incidentsList" style="max-height:500px;overflow-y:auto"></div>
+                </div>
+                <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
+                    <textarea id="agentInput" placeholder="Ask the NOC agent..." rows="2"
+                        style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text-primary);font-size:14px;font-family:inherit;resize:none"
+                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage()}"></textarea>
+                    <button class="btn btn-primary" onclick="sendAgentMessage()" id="agentSendBtn" style="align-self:flex-end">Send</button>
+                </div>
+                <div style="padding:4px 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
+                    <span style="font-size:11px;color:var(--text-secondary)">Quick:</span>
+                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('What BGP issues are open and what do the logs say?')">BGP issues</button>
+                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('Are there any SS7 or 5G signalling threats in current alerts?')">SS7 threats</button>
+                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('Show me all P1 and P2 incidents and their root causes')">P1/P2 summary</button>
+                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('What is causing high CPU on BNG-East and what do the logs show?')">BNG-East CPU</button>
                 </div>
             </div>
         </div>
 
-        <!-- MTTR Tab -->
-        <div id="tab-mttr" class="tab-content">
-            <div class="card">
-                <div class="card-header">⏱ MTTR Report</div>
-                <div class="card-body">
-                    <div id="mttrContent" style="font-size:13px;color:var(--text-secondary)">Loading MTTR data...</div>
+        <!-- FiGHT Threats Tab -->
+        <div id="tab-fight" class="tab-content">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="card">
+                    <div class="card-header">🛡️ Detect MITRE FiGHT Threats</div>
+                    <div class="card-body">
+                        <div style="display:flex;flex-direction:column;gap:10px">
+                            <label style="font-size:12px;color:var(--text-secondary)">Alarm text / log lines to analyse</label>
+                            <textarea id="fightInput" rows="5" style="background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text-primary);font-size:13px;font-family:monospace;resize:vertical"
+                                placeholder="Paste alarm text or log lines here...&#10;e.g. MAP-SRI request from unexpected GT address&#10;bulk SRI queries targeting sequential MSISDNs"></textarea>
+                            <input type="text" id="fightAsset" placeholder="Asset / node name (optional)" style="background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
+                            <button class="btn btn-primary" onclick="runFightDetection()" id="fightBtn">🔍 Detect Threats</button>
+                            <div style="border-top:1px solid var(--border);padding-top:8px">
+                                <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Explain a technique</label>
+                                <div style="display:flex;gap:6px">
+                                    <input type="text" id="fightExplainId" placeholder="e.g. FGT5019" style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
+                                    <button class="btn btn-secondary" onclick="explainTechnique()">Explain</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Trends Tab -->
-        <div id="tab-trends" class="tab-content">
-            <div class="card">
-                <div class="card-header">📈 Degradation Trends</div>
-                <div class="card-body">
-                    <div id="trendsContent" style="font-size:13px;color:var(--text-secondary)">Loading trend data...</div>
+                <div class="card">
+                    <div class="card-header">📋 Results</div>
+                    <div class="card-body" id="fightResults" style="max-height:500px;overflow-y:auto;font-size:13px">
+                        <div style="color:var(--text-secondary);text-align:center;padding:32px 0">Run a detection to see results here.</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -297,7 +320,7 @@
     </div>
 
     <script>
-        const API_BASE = window.location.origin + (window.location.port === '8080' ? '/api' : '');
+        const API_BASE = 'http://localhost:8000';
 
         // ─── Tab Switching ─────────────────────────────────────────────────
         function switchTab(name) {
@@ -306,10 +329,6 @@
             document.getElementById('tab-' + name).classList.add('active');
             document.querySelector(`.tab-bar button[onclick*="${name}"]`).classList.add('active');
 
-            // Load data for the tab
-            if (name === 'incidents') loadIncidents();
-            if (name === 'mttr') loadMTTR();
-            if (name === 'trends') loadTrends();
             if (name === 'escalations') loadEscalations();
         }
 
@@ -404,10 +423,13 @@
         function showResult(diag) {
             const sev = diag.severity || 'P4';
             const container = document.getElementById('resultContainer');
+            const alarmId   = diag.alarm_id || 'ALM-MANUAL';
+            const node      = document.getElementById('nodeName').value || 'unknown';
+            const action    = diag.recommended_action || '';
             container.innerHTML = `
                 <div class="result-card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                        <h3 style="margin:0">Diagnosis: ${diag.alarm_id}</h3>
+                        <h3 style="margin:0">Diagnosis: ${alarmId}</h3>
                         <span class="severity-badge severity-${sev}">${sev}</span>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px">
@@ -420,7 +442,7 @@
                         <strong>Root Cause:</strong> ${diag.root_cause || 'N/A'}
                     </div>
                     <div style="margin-bottom:8px;font-size:13px">
-                        <strong>Recommended Action:</strong> ${diag.recommended_action || 'N/A'}
+                        <strong>Recommended Action:</strong> ${action || 'N/A'}
                     </div>
                     <div style="margin-bottom:8px;font-size:13px">
                         <strong>Runbook:</strong> ${diag.relevant_runbook}
@@ -429,9 +451,60 @@
                     ${diag.escalation ? `<div style="margin-top:8px;padding:8px;border-radius:4px;background:rgba(234,179,8,0.1);font-size:12px">
                         <strong>Escalation:</strong> ${diag.escalation.reason}
                     </div>` : ''}
-                    <pre style="margin-top:12px">${JSON.stringify(diag, null, 2)}</pre>
+
+                    <!-- How to Fix section -->
+                    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+                        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--accent-blue)">💊 How to Fix</div>
+                        <div id="fixOutput-${alarmId}" style="font-size:13px;color:var(--text-secondary)">
+                            ${action ? `<div style="margin-bottom:10px;color:var(--text-primary)">${escHtml(action)}</div>` : ''}
+                            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px"
+                                onclick="askHowToFix('${alarmId}', '${escHtml(node)}', '${escHtml(diag.alarm_name||alarmId)}')">
+                                🤖 Ask Agent for Full Fix Steps
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `;
+        }
+
+        async function askHowToFix(alarmId, node, alarmName) {
+            const out = document.getElementById('fixOutput-' + alarmId);
+            out.innerHTML = '<div style="color:var(--text-secondary)">⏳ Agent is generating fix steps…</div>';
+            try {
+                const res = await fetch(`${API_BASE}/agent/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: `For alarm ${alarmId} ("${alarmName}") on node ${node}: use lookup_incident and search_knowledge_base to find the root cause, then give me step-by-step remediation instructions for a NOC operator. If there is a remediable FiGHT technique involved, propose it for approval.`
+                    })
+                });
+                const d = await res.json();
+                if (d.status === 'success') {
+                    out.innerHTML = renderFixAnswer(d.answer, d.trace, alarmId, node);
+                } else {
+                    out.innerHTML = `<span style="color:var(--accent-red)">Error: ${escHtml(JSON.stringify(d))}</span>`;
+                }
+            } catch(e) {
+                out.innerHTML = `<span style="color:var(--accent-red)">${escHtml(e.message)}</span>`;
+            }
+        }
+
+        function renderFixAnswer(answer, trace, alarmId, node) {
+            // Check if any trace step has a remediation proposal
+            let approvalHtml = '';
+            for (const step of (trace || [])) {
+                if (step.type === 'tool_call') {
+                    try {
+                        const r = JSON.parse(step.result || '{}');
+                        if (r.requires_approval && r.technique_id) {
+                            approvalHtml += renderApprovalCard(r, node);
+                        }
+                    } catch(_) {}
+                }
+            }
+            const traceHtml = renderTrace(trace);
+            return `<div style="font-size:13px;margin-bottom:10px">${renderMd(answer)}</div>
+                    ${approvalHtml}${traceHtml}`;
         }
 
         function clearResult() {
@@ -463,7 +536,6 @@
                 const data = await res.json();
                 showToast(`Ingested: ${data.result?.ingested || 0} alarms`, 'success');
                 loadDashboardStats();
-                loadIncidents();
             } catch (e) {
                 showToast('Ingest error: ' + e.message, 'error');
             }
@@ -492,134 +564,8 @@
                 }
                 showToast(`Ingested ${data.result?.ingested || 0} alarms from ${file.name}`, 'success');
                 loadDashboardStats();
-                loadIncidents();
             } catch (e) {
                 showToast('Upload error: ' + e.message, 'error');
-            }
-        }
-
-        // ─── Incidents ────────────────────────────────────────────────────
-        async function loadIncidents() {
-            const status = document.getElementById('incidentFilterStatus').value;
-            const severity = document.getElementById('incidentFilterSeverity').value;
-            const node = document.getElementById('incidentFilterNode').value;
-
-            let url = `${API_BASE}/incidents?limit=50`;
-            if (status) url += `&status=${status}`;
-            if (severity) url += `&severity=${severity}`;
-            if (node) url += `&node_name=${node}`;
-
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                const list = document.getElementById('incidentsList');
-
-                if (data.status === 'success' && data.incidents.length > 0) {
-                    list.innerHTML = data.incidents.map(inc => {
-                        const sevClass = (inc.severity || 'P4').toLowerCase() + '-border';
-                        const sev = inc.severity || 'P4';
-                        return `<div class="incident-item ${sevClass}">
-                            <div class="incident-header">
-                                <span class="incident-id">${inc.alarm_id}</span>
-                                <span class="severity-badge severity-${sev}">${sev}</span>
-                            </div>
-                            <div class="incident-node">${inc.node_name || 'Unknown'} · ${inc.alarm_type || 'generic'}</div>
-                            <div class="incident-text">${inc.root_cause || inc.raw_alarm_text?.substring(0, 100) || 'No description'}</div>
-                            <div class="incident-meta">
-                                <span>⏱ ${inc.mttr_seconds ? Math.round(inc.mttr_seconds) + 's' : 'Open'}</span>
-                                <span>📊 ${(inc.confidence * 100).toFixed(0)}%</span>
-                                <span>📌 ${inc.status}</span>
-                                <span>🕐 ${new Date(inc.created_at).toLocaleString()}</span>
-                            </div>
-                        </div>`;
-                    }).join('');
-                } else {
-                    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">No incidents found. Try ingesting sample alarms first.</div>';
-                }
-            } catch (e) {
-                document.getElementById('incidentsList').innerHTML = `<div style="color:var(--accent-red)">Error loading incidents: ${e.message}</div>`;
-            }
-        }
-
-        // ─── MTTR ─────────────────────────────────────────────────────────
-        async function loadMTTR() {
-            try {
-                const res = await fetch(`${API_BASE}/mttr`);
-                const data = await res.json();
-                const el = document.getElementById('mttrContent');
-
-                if (data.status === 'success' && data.mttr_report.n_incidents > 0) {
-                    const r = data.mttr_report;
-                    let html = `<div style="margin-bottom:16px">
-                        <strong>Overall MTTR:</strong> ${r.overall_mttr?.mean || 0}s (median: ${r.overall_mttr?.median || 0}s, p95: ${r.overall_mttr?.p95 || 0}s)
-                        <span style="margin-left:12px">Trend: ${r.trend?.direction || 'stable'}</span>
-                        <span style="margin-left:12px">Status: <span class="${r.status === 'critical' ? 'stat-value red' : r.status === 'warning' ? 'stat-value yellow' : 'stat-value green'}">${r.status}</span></span>
-                    </div>`;
-                    
-                    if (Object.keys(r.per_severity).length > 0) {
-                        html += '<strong>By Severity:</strong><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px">';
-                        for (const [sev, stats] of Object.entries(r.per_severity)) {
-                            html += `<div style="background:#0f172a;padding:10px;border-radius:6px">
-                                <span class="severity-badge severity-${sev}">${sev}</span>
-                                <div style="margin-top:4px">Mean: ${stats.mean_mttr}s</div>
-                                <div>Median: ${stats.median_mttr}s</div>
-                                <div>SLA: ${stats.sla_compliance_pct || 0}%</div>
-                                <div>Count: ${stats.count}</div>
-                            </div>`;
-                        }
-                        html += '</div>';
-                    }
-
-                    if (Object.keys(r.per_node).length > 0) {
-                        html += '<div style="margin-top:16px"><strong>By Node:</strong><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px">';
-                        for (const [node, stats] of Object.entries(r.per_node)) {
-                            html += `<div style="background:#0f172a;padding:10px;border-radius:6px">
-                                <div><strong>${node}</strong></div>
-                                <div>Mean: ${stats.mean_mttr}s</div>
-                                <div>Count: ${stats.count}</div>
-                            </div>`;
-                        }
-                        html += '</div></div>';
-                    }
-
-                    el.innerHTML = html;
-                } else {
-                    el.innerHTML = 'No MTTR data available yet. Ingest alarms to generate MTTR metrics.';
-                }
-            } catch (e) {
-                document.getElementById('mttrContent').innerHTML = `Error: ${e.message}`;
-            }
-        }
-
-        // ─── Trends ───────────────────────────────────────────────────────
-        async function loadTrends() {
-            try {
-                const res = await fetch(`${API_BASE}/trends`);
-                const data = await res.json();
-                const el = document.getElementById('trendsContent');
-
-                if (data.status === 'success' && data.trends.nodes?.length > 0) {
-                    let html = `<div style="margin-bottom:12px">
-                        System Status: <span class="${data.trends.status === 'critical' ? 'stat-value red' : data.trends.status === 'warning' ? 'stat-value yellow' : 'stat-value green'}">${data.trends.status}</span>
-                        · Nodes assessed: ${data.trends.total_nodes_assessed}
-                    </div>`;
-
-                    html += data.trends.nodes.map(n => `
-                        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#0f172a;border-radius:6px;margin-bottom:4px">
-                            <span class="trend-indicator trend-${n.status}"></span>
-                            <span style="flex:1"><strong>${n.node_name}</strong></span>
-                            <span style="color:var(--text-secondary)">Alarms: ${n.total_alarms_24h}</span>
-                            <span style="color:var(--text-secondary)">Score: ${n.avg_severity_score}</span>
-                            <span class="stat-value ${n.status === 'critical' ? 'red' : n.status === 'warning' ? 'yellow' : 'green'}" style="font-size:13px">${n.status}</span>
-                        </div>
-                    `).join('');
-
-                    el.innerHTML = html;
-                } else {
-                    el.innerHTML = 'No trend data available yet. Data accumulates as alarms are processed.';
-                }
-            } catch (e) {
-                document.getElementById('trendsContent').innerHTML = `Error: ${e.message}`;
             }
         }
 
@@ -689,6 +635,344 @@
         async function refreshDashboard() {
             await Promise.all([checkHealth(), loadDashboardStats()]);
             showToast('Dashboard refreshed', 'success');
+        }
+
+        // ─── Agent Chat ───────────────────────────────────────────────────
+        let agentSessionId = null;
+
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML = `
+                <div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:32px 0">
+                    Ask anything about your NOC — the agent will use live tools to answer.
+                </div>`;
+            agentSessionId = null;
+        }
+
+        function quickAsk(q) {
+            document.getElementById('agentInput').value = q;
+            sendAgentMessage();
+        }
+
+        function appendMessage(role, html, meta) {
+            const box = document.getElementById('chatMessages');
+            const wrap = document.createElement('div');
+            wrap.style.cssText = role === 'user'
+                ? 'align-self:flex-end;max-width:75%;background:#1e3a5f;border-radius:12px 12px 2px 12px;padding:10px 14px;font-size:13px'
+                : 'align-self:flex-start;max-width:85%;background:var(--bg-card-hover);border-radius:2px 12px 12px 12px;padding:10px 14px;font-size:13px;border:1px solid var(--border)';
+            wrap.innerHTML = html + (meta ? `<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">${meta}</div>` : '');
+            box.appendChild(wrap);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function renderTrace(trace) {
+            if (!trace || !trace.length) return '';
+            const steps = trace.filter(s => s.type === 'tool_call');
+            if (!steps.length) return '';
+            const rows = steps.map(s =>
+                `<tr><td style="padding:2px 8px 2px 0;color:var(--accent-blue)">${s.iteration}</td>` +
+                `<td style="padding:2px 8px 2px 0;color:var(--accent-yellow)">${s.tool}</td>` +
+                `<td style="padding:2px 0;color:var(--text-secondary);font-size:11px">${JSON.stringify(s.arguments).slice(0,80)}</td></tr>`
+            ).join('');
+            return `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:11px;color:var(--text-secondary)">🔧 ${steps.length} tool call(s)</summary>
+                <table style="margin-top:6px;width:100%"><tbody>${rows}</tbody></table></details>`;
+        }
+
+        async function sendAgentMessage() {
+            const input = document.getElementById('agentInput');
+            const btn   = document.getElementById('agentSendBtn');
+            const query = input.value.trim();
+            if (!query) return;
+
+            input.value = '';
+            btn.disabled = true;
+            btn.textContent = '…';
+
+            appendMessage('user', `<span style="white-space:pre-wrap">${escHtml(query)}</span>`);<!-- user msgs stay literal -->
+
+            const thinking = document.createElement('div');
+            thinking.style.cssText = 'align-self:flex-start;color:var(--text-secondary);font-size:13px;padding:8px 14px';
+            thinking.innerHTML = '<span style="animation:pulse 1s infinite">⏳ Agent thinking…</span>';
+            document.getElementById('chatMessages').appendChild(thinking);
+            document.getElementById('chatMessages').scrollTop = 9999;
+
+            try {
+                const res = await fetch(`${API_BASE}/agent/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, session_id: agentSessionId })
+                });
+                const d = await res.json();
+                thinking.remove();
+
+                if (d.status === 'success') {
+                    agentSessionId = d.session_id;
+                    const meta = `model: ${d.model} &nbsp;|&nbsp; ${d.iterations} step(s)`;
+                    const traceHtml = renderTrace(d.trace);
+                    // Check trace for any pending remediation approvals
+                    let approvalHtml = '';
+                    for (const step of (d.trace || [])) {
+                        if (step.type === 'tool_call') {
+                            try {
+                                const r = JSON.parse(step.result || '{}');
+                                if (r.requires_approval && r.technique_id) {
+                                    approvalHtml += renderApprovalCard(r, r.target || '');
+                                }
+                            } catch(_) {}
+                        }
+                    }
+                    appendMessage('agent',
+                        `<div>${renderMd(d.answer)}</div>${approvalHtml}${traceHtml}`,
+                        meta);
+                } else {
+                    thinking.remove();
+                    appendMessage('agent', `<span style="color:var(--accent-red)">Error: ${escHtml(JSON.stringify(d))}</span>`);
+                }
+            } catch(e) {
+                thinking.remove();
+                appendMessage('agent', `<span style="color:var(--accent-red)">Request failed: ${escHtml(e.message)}</span>`);
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Send';
+        }
+
+        // ─── Approval Card ─────────────────────────────────────────────────
+        function renderApprovalCard(r, node) {
+            const safeId  = escHtml(r.technique_id);
+            const safeName = escHtml(r.name || r.technique_id);
+            const safeAction = escHtml(r.proposed_action || r.full_mitigation || '');
+            const safeTarget = escHtml(r.target || node || '');
+            const cardId = 'approval-' + r.technique_id + '-' + Date.now();
+            return `<div id="${cardId}" style="margin-top:10px;border:1px solid var(--accent-orange);border-radius:8px;padding:12px;background:rgba(249,115,22,0.07)">
+                <div style="font-weight:600;color:var(--accent-orange);margin-bottom:6px">⚠️ Remediation Proposed — ${safeId}: ${safeName}</div>
+                <div style="font-size:12px;margin-bottom:10px;color:var(--text-primary)">${safeAction}</div>
+                ${safeTarget ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">Target: ${safeTarget}</div>` : ''}
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;background:#16a34a"
+                        onclick="approveRemediation('${r.technique_id}', '${escHtml(r.target||node||'')}', '${cardId}')">
+                        ✅ Approve &amp; Apply
+                    </button>
+                    <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px"
+                        onclick="document.getElementById('${cardId}').remove()">
+                        ✕ Dismiss
+                    </button>
+                </div>
+            </div>`;
+        }
+
+        async function approveRemediation(techniqueId, target, cardId) {
+            const card = document.getElementById(cardId);
+            if (card) card.innerHTML = '<div style="color:var(--text-secondary)">⏳ Applying remediation…</div>';
+            try {
+                const res = await fetch(`${API_BASE}/agent/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: `Execute approved remediation for MITRE FiGHT technique ${techniqueId} on target "${target}". confirmed=true. Log the remediation action.`
+                    })
+                });
+                const d = await res.json();
+                if (card) {
+                    card.style.borderColor = 'var(--accent-green)';
+                    card.innerHTML = `<div style="color:var(--accent-green);font-weight:600">✅ Remediation Applied — ${escHtml(techniqueId)}</div>
+                        <div style="font-size:12px;margin-top:6px;color:var(--text-primary)">${renderMd(d.answer||'')}</div>`;
+                }
+                showToast(`Remediation for ${techniqueId} applied and logged`, 'success');
+            } catch(e) {
+                if (card) card.innerHTML = `<div style="color:var(--accent-red)">Failed: ${escHtml(e.message)}</div>`;
+            }
+        }
+
+        // ─── FiGHT Detection ──────────────────────────────────────────────
+        async function runFightDetection() {
+            const text  = document.getElementById('fightInput').value.trim();
+            const asset = document.getElementById('fightAsset').value.trim();
+            const btn   = document.getElementById('fightBtn');
+            const out   = document.getElementById('fightResults');
+            if (!text) { showToast('Paste some alarm text first', 'error'); return; }
+
+            btn.disabled = true; btn.textContent = '⏳ Detecting…';
+            out.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:24px">Running detection…</div>';
+
+            // Use the agent to detect
+            try {
+                const query = `Run detect_fight_techniques on the following evidence and report all findings with confidence scores.\n\nEvidence:\n${text}`;
+                const res = await fetch(`${API_BASE}/agent/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const d = await res.json();
+                if (d.status === 'success') {
+                    const trace = (d.trace || []).filter(s => s.type === 'tool_call');
+                    const findingsStep = trace.find(s => s.tool === 'detect_fight_techniques');
+                    let findingsHtml = '';
+                    if (findingsStep) {
+                        try {
+                            const r = JSON.parse(findingsStep.result);
+                            if (r.findings && r.findings.length) {
+                                findingsHtml = r.findings.map(f => `
+                                    <div style="border:1px solid ${f.confidence_tier==='HIGH'?'var(--accent-red)':f.confidence_tier==='MEDIUM'?'var(--accent-orange)':'var(--border)'};border-radius:8px;padding:12px;margin-bottom:10px">
+                                        <div style="font-weight:600;color:${f.confidence_tier==='HIGH'?'var(--accent-red)':f.confidence_tier==='MEDIUM'?'var(--accent-orange)':'var(--accent-yellow)'}">
+                                            ${f.technique_id} — ${escHtml(f.name)}
+                                        </div>
+                                        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escHtml(f.tactic)} &nbsp;|&nbsp; Confidence: ${f.confidence}/100 (${f.confidence_tier})</div>
+                                        <div style="margin-top:8px;font-size:12px">
+                                            <strong>Indicators:</strong><ul style="margin:4px 0 0 16px">${(f.matched_indicators||[]).map(i=>`<li>${escHtml(i)}</li>`).join('')}</ul>
+                                        </div>
+                                        <div style="margin-top:6px;font-size:12px;color:var(--text-secondary)">Kill-chain: ${escHtml(f.precursor_note||'')}</div>
+                                        <div style="margin-top:4px;font-size:12px;color:var(--text-secondary)">Self-critique: ${escHtml(f.self_critique||'')} <em>(${escHtml(f.critique_verdict||'')})</em></div>
+                                        ${f.confidence_note ? `<div style="margin-top:4px;font-size:12px;color:var(--accent-yellow)">⚠️ ${escHtml(f.confidence_note)}</div>` : ''}
+                                        <button class="btn btn-secondary" style="margin-top:8px;padding:4px 10px;font-size:11px" onclick="explainTechniqueById('${f.technique_id}')">📖 Explain ${f.technique_id}</button>
+                                    </div>`).join('');
+                            } else {
+                                findingsHtml = `<div style="color:var(--accent-green);text-align:center;padding:20px">✅ No FiGHT threats detected above threshold.</div>`;
+                            }
+                            // Add approval cards for HIGH/MEDIUM findings
+                            const approvable = (r.findings||[]).filter(f => ['HIGH','MEDIUM'].includes(f.confidence_tier));
+                            if (approvable.length) {
+                                findingsHtml += approvable.map(f => renderApprovalCard(
+                                    { technique_id: f.technique_id, name: f.name,
+                                      proposed_action: f.detection_guidance,
+                                      target: document.getElementById('fightAsset').value.trim() || 'network',
+                                      requires_approval: true },
+                                    document.getElementById('fightAsset').value.trim() || 'network'
+                                )).join('');
+                            }
+                        } catch(_) {}
+                    }
+                    out.innerHTML = (findingsHtml || '') +
+                        `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;font-size:13px;color:var(--text-secondary)">${renderMd(d.answer)}</div>`;
+                } else {
+                    out.innerHTML = `<div style="color:var(--accent-red)">Error: ${escHtml(JSON.stringify(d))}</div>`;
+                }
+            } catch(e) {
+                out.innerHTML = `<div style="color:var(--accent-red)">Request failed: ${escHtml(e.message)}</div>`;
+            }
+            btn.disabled = false; btn.textContent = '🔍 Detect Threats';
+        }
+
+        async function explainTechniqueById(tid) {
+            document.getElementById('fightExplainId').value = tid;
+            await explainTechnique();
+        }
+
+        async function explainTechnique() {
+            const tid = document.getElementById('fightExplainId').value.trim().toUpperCase();
+            const out = document.getElementById('fightResults');
+            if (!tid) { showToast('Enter a technique ID', 'error'); return; }
+            out.innerHTML = '<div style="color:var(--text-secondary);padding:20px">Loading explanation…</div>';
+            try {
+                const res = await fetch(`${API_BASE}/agent/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: `Explain MITRE FiGHT technique ${tid} in plain language for a NOC operator.` })
+                });
+                const d = await res.json();
+                out.innerHTML = `<div style="font-size:13px">${renderMd(d.answer || JSON.stringify(d))}</div>`;
+            } catch(e) {
+                out.innerHTML = `<div style="color:var(--accent-red)">${escHtml(e.message)}</div>`;
+            }
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ─── Markdown renderer (tables + bold/italic + code + bullets) ────
+        function renderMd(raw) {
+            if (!raw) return '';
+            const lines = String(raw).split('\n');
+            let html = '';
+            let inTable = false;
+            let tableHtml = '';
+
+            const inlineFormat = (s) => {
+                // Escape HTML first
+                s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                // **bold**
+                s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                // *italic* or _italic_
+                s = s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+                s = s.replace(/_(.+?)_/g, '<em>$1</em>');
+                // `code`
+                s = s.replace(/`([^`]+)`/g, '<code style="background:#0f172a;padding:1px 5px;border-radius:3px;font-size:12px">$1</code>');
+                return s;
+            };
+
+            const flushTable = () => {
+                if (!tableHtml) return;
+                html += `<div style="overflow-x:auto;margin:10px 0"><table style="width:100%;border-collapse:collapse;font-size:13px">${tableHtml}</table></div>`;
+                tableHtml = '';
+                inTable = false;
+            };
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmed = line.trim();
+
+                // Detect table row: starts and ends with |
+                if (/^\|.+\|$/.test(trimmed)) {
+                    const cells = trimmed.slice(1, -1).split('|');
+                    // Separator row (---|---) → skip, marks header end
+                    if (cells.every(c => /^[\s\-:]+$/.test(c))) {
+                        // previous row was header — wrap it
+                        tableHtml = tableHtml.replace(/<tr([^>]*)><td/g, '<tr$1><th').replace(/<\/td>/g, '</th>');
+                        continue;
+                    }
+                    const tag = inTable ? 'td' : 'th'; // first row = header until sep seen
+                    const row = cells.map(c =>
+                        `<td style="padding:6px 12px;border:1px solid #1e293b;text-align:left">${inlineFormat(c.trim())}</td>`
+                    ).join('');
+                    tableHtml += `<tr style="background:${inTable ? '#0f172a' : '#111827'}">${row}</tr>`;
+                    inTable = true;
+                    continue;
+                }
+
+                // Non-table line — flush any pending table
+                if (inTable) flushTable();
+
+                // Heading ### ## #
+                if (/^#{1,3} /.test(trimmed)) {
+                    const lvl = trimmed.match(/^(#+)/)[1].length;
+                    const text = inlineFormat(trimmed.replace(/^#+\s*/, ''));
+                    const sz = lvl === 1 ? '16px' : lvl === 2 ? '15px' : '14px';
+                    html += `<div style="font-weight:700;font-size:${sz};margin:12px 0 4px">${text}</div>`;
+                    continue;
+                }
+
+                // Bullet - or *
+                if (/^[-*] /.test(trimmed)) {
+                    html += `<div style="margin:2px 0 2px 14px;display:flex;gap:6px"><span style="color:var(--accent-blue);flex-shrink:0">•</span><span>${inlineFormat(trimmed.slice(2))}</span></div>`;
+                    continue;
+                }
+
+                // Numbered list
+                if (/^\d+\. /.test(trimmed)) {
+                    const num = trimmed.match(/^(\d+)\./)[1];
+                    const rest = trimmed.replace(/^\d+\.\s*/, '');
+                    html += `<div style="margin:2px 0 2px 14px;display:flex;gap:6px"><span style="color:var(--accent-blue);flex-shrink:0;min-width:18px">${num}.</span><span>${inlineFormat(rest)}</span></div>`;
+                    continue;
+                }
+
+                // Horizontal rule
+                if (/^---+$/.test(trimmed)) {
+                    html += '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">';
+                    continue;
+                }
+
+                // Empty line → spacing
+                if (!trimmed) {
+                    html += '<div style="height:6px"></div>';
+                    continue;
+                }
+
+                // Normal paragraph
+                html += `<div style="margin:2px 0">${inlineFormat(trimmed)}</div>`;
+            }
+
+            if (inTable) flushTable();
+            return html;
         }
 
         // ─── Init ─────────────────────────────────────────────────────────

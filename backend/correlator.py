@@ -23,8 +23,11 @@ logger = logging.getLogger(__name__)
 CORRELATION_WINDOW_DEFAULT = 300  # 5 minutes
 # Extended window for same-node correlations
 SAME_NODE_WINDOW = 600  # 10 minutes
-# Semantic similarity threshold
+# Semantic similarity threshold (used when embedding service is available)
 SIMILARITY_THRESHOLD = 0.70
+# Keyword (Jaccard) similarity threshold - lower because raw token overlap
+# scores lower than embedding cosine similarity for genuinely related alarms
+KEYWORD_SIMILARITY_THRESHOLD = 0.30
 # Minimum correlation confidence
 MIN_CONFIDENCE = 0.50
 
@@ -163,19 +166,22 @@ def _semantic_correlation(alarms: List[Dict[str, Any]]) -> List[List[Dict[str, A
                         alarms[i].get("alarm_text", ""),
                         alarms[j].get("alarm_text", ""),
                     )
+                    threshold = SIMILARITY_THRESHOLD
                 except Exception:
                     similarity = _keyword_similarity(
                         alarms[i].get("alarm_text", ""),
                         alarms[j].get("alarm_text", ""),
                     )
+                    threshold = KEYWORD_SIMILARITY_THRESHOLD
             else:
                 similarity = _keyword_similarity(
                     alarms[i].get("alarm_text", ""),
                     alarms[j].get("alarm_text", ""),
                 )
+                threshold = KEYWORD_SIMILARITY_THRESHOLD
 
-            adjacency[i][j] = similarity
-            adjacency[j][i] = similarity
+            adjacency[i][j] = (similarity, threshold)
+            adjacency[j][i] = (similarity, threshold)
 
     # Cluster using simple threshold-based grouping
     visited = set()
@@ -191,7 +197,8 @@ def _semantic_correlation(alarms: List[Dict[str, Any]]) -> List[List[Dict[str, A
         for j in range(i + 1, n):
             if j in visited:
                 continue
-            if adjacency[i][j] >= SIMILARITY_THRESHOLD:
+            sim, threshold = adjacency[i][j]
+            if sim >= threshold:
                 group.append(j)
                 visited.add(j)
 

@@ -1,0 +1,14 @@
+{
+  "_comment": "Asset-level allowlist: known-good indicator patterns per asset that should not trigger FiGHT alerts.",
+  "Router-KNB-04": [
+    "high bgp route update volume"
+  ],
+  "Switch-NBI-07": [
+    "output queue drops during maintenance"
+  ],
+  "BNG-East": [
+    "connection rate above 150 during peak hours"
+  ],
+  "Router-NBO-03": [],
+  "Router-MSA-01": []
+}
