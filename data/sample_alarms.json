@@ -205,7 +205,7 @@
     "node_name": "Router-NBO-03",
     "alarm_type": "cpu",
     "timestamp": "2026-06-13T15:30:00Z",
-    "alarm_text": "CPU temperature at 85°C on Router-NBO-03. Warning threshold: 80°C. Critical threshold: 95°C. Fan speed: 4500 RPM. Ambient temperature: 32°C."
+    "alarm_text": "CPU temperature at 85\u00b0C on Router-NBO-03. Warning threshold: 80\u00b0C. Critical threshold: 95\u00b0C. Fan speed: 4500 RPM. Ambient temperature: 32\u00b0C."
   },
   {
     "alarm_id": "ALM-027",
@@ -261,7 +261,7 @@
     "node_name": "Router-NBO-03",
     "alarm_type": "packet_loss",
     "timestamp": "2026-06-13T19:00:00Z",
-    "alarm_text": "Packet loss trend increasing on Router-NBO-03. Loss rate: 2% → 5% → 8% over last 3 hours. Jitter increasing from 5ms to 25ms. VoIP quality degrading."
+    "alarm_text": "Packet loss trend increasing on Router-NBO-03. Loss rate: 2% \u2192 5% \u2192 8% over last 3 hours. Jitter increasing from 5ms to 25ms. VoIP quality degrading."
   },
   {
     "alarm_id": "ALM-034",
@@ -293,7 +293,7 @@
     "node_name": "Switch-NBI-07",
     "alarm_type": "power",
     "timestamp": "2026-06-13T21:00:00Z",
-    "alarm_text": "Power fluctuation detected on Switch-NBI-07. Input voltage: 220V ± 15V. Frequency: 49.5Hz. Possible generator test or grid instability."
+    "alarm_text": "Power fluctuation detected on Switch-NBI-07. Input voltage: 220V \u00b1 15V. Frequency: 49.5Hz. Possible generator test or grid instability."
   },
   {
     "alarm_id": "ALM-038",
@@ -398,5 +398,45 @@
     "alarm_type": "interface",
     "timestamp": "2026-06-14T03:00:00Z",
     "alarm_text": "All metrics returned to normal on Router-KNB-04. CPU: 45%. Memory: 55%. Packet loss: 0%. BGP sessions: 98/100 established. Link utilization: 60%."
+  },
+  {
+    "alarm_id": "ALM-051",
+    "alarm_name": "SS7 Signaling Anomaly",
+    "node_name": "STP-01",
+    "alarm_type": "security",
+    "timestamp": "2026-06-13T07:15:00Z",
+    "alarm_text": "Abnormal SS7 MAP send routing info SRI-SM requests detected on signaling gateway STP-01. Unknown GTT address sending location requests for multiple MSISDNs. Possible SS7 location tracking attack in progress."
+  },
+  {
+    "alarm_id": "ALM-052",
+    "alarm_name": "Unauthorized SIM Swap Detected",
+    "node_name": "HLR-01",
+    "alarm_type": "security",
+    "timestamp": "2026-06-13T07:22:00Z",
+    "alarm_text": "Unauthorized MSISDN subscriber identity transfer detected on HLR-01. IMSI catcher activity suspected. Multiple SIM swap requests from unverified location in last 10 minutes. HLR update logs show abnormal IMSI transfer pattern."
+  },
+  {
+    "alarm_id": "ALM-053",
+    "alarm_name": "5G Core AMF Overload",
+    "node_name": "AMF-01",
+    "alarm_type": "security",
+    "timestamp": "2026-06-13T07:30:00Z",
+    "alarm_text": "AMF network function down due to service-based architecture SBA overload. AMF flood detected \u2014 50,000 registration requests per second from unknown source. NRF unable to route. 5G core unreachable for all subscribers in sector."
+  },
+  {
+    "alarm_id": "ALM-054",
+    "alarm_name": "Radio Frequency Jamming Detected",
+    "node_name": "gNodeB-KNB-07",
+    "alarm_type": "security",
+    "timestamp": "2026-06-13T07:45:00Z",
+    "alarm_text": "Radio interference and RAN degradation detected on gNodeB-KNB-07. Abnormal RF signal noise across all frequency bands. Possible jamming attack causing cell tower interference. gNodeB anomaly affecting 2,400 active subscribers."
+  },
+  {
+    "alarm_id": "ALM-055",
+    "alarm_name": "Unauthorized NMS Access",
+    "node_name": "NMS-01",
+    "alarm_type": "security",
+    "timestamp": "2026-06-13T08:00:00Z",
+    "alarm_text": "Unauthorized login detected on NMS-01 network management system. Credential abuse suspected \u2014 admin account accessed from unrecognized IP at 03:00 local time. Privilege escalation attempt logged. OSS access to core router configuration detected."
   }
 ]

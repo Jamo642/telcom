@@ -3,6 +3,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis-telenoc
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
     mem_limit: 256m
     ports:
@@ -148,6 +149,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.backend
     container_name: backend-telenoc
+    restart: unless-stopped
     mem_limit: 1g
     ports:
       - "8000:8000"
@@ -199,6 +201,7 @@ services:
   ui:
     image: nginx:alpine
     container_name: ui-telenoc
+    restart: unless-stopped
     mem_limit: 128m
     ports:
       - "8080:80"

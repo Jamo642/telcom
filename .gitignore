@@ -33,3 +33,7 @@ ollama_data/
 *.log
 results/
 .streamlit/
+.venv/
+*.db
+data/uploads/
+chroma_data/

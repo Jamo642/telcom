@@ -92,12 +92,59 @@ To enable full OPEA stack:
 COMPOSE_PROFILES=opea docker compose -f docker/docker-compose.yml up -d
 ```
 
+## Demo Commands
+
+```bash
+# Check system health
+curl http://localhost:8000/health
+
+# Diagnose a telecom alarm (rule-based, no API key needed)
+curl -X POST http://localhost:8000/diagnose \
+  -H "Content-Type: application/json" \
+  -d '{"alarm_text": "BGP session dropped on Router-KNB-04", \
+       "alarm_id": "ALM-001", "node_name": "Router-KNB-04", "alarm_type": "bgp"}'
+
+# Test FiGHT security detection
+curl -X POST http://localhost:8000/diagnose \
+  -H "Content-Type: application/json" \
+  -d '{"alarm_text": "SS7 MAP send routing info requests detected on STP-01", \
+       "alarm_id": "ALM-051", "node_name": "STP-01", "alarm_type": "security"}'
+
+# Check MTTR stats
+curl http://localhost:8000/mttr
+
+# View pending human approvals
+curl http://localhost:8000/approvals/pending
+
+# Check agent status
+curl http://localhost:8000/agent/status
+```
+
 ## Stop / Logs
 
 ```bash
 docker compose -f docker/docker-compose.yml down          # stop
 docker compose -f docker/docker-compose.yml logs -f backend  # logs
 ```
+
+## Third-Party Dependencies
+
+All dependencies are MIT/Apache/BSD licensed and compatible with this project's Apache 2.0 license.
+
+| Library | License | Purpose |
+|---------|---------|---------|
+| FastAPI | MIT | REST API framework |
+| uvicorn | BSD | ASGI server |
+| pydantic | MIT | Data validation |
+| ChromaDB | Apache 2.0 | Vector database for RAG |
+| sentence-transformers | Apache 2.0 | Local embeddings (BAAI/bge-small-en-v1.5) |
+| httpx | BSD | Async HTTP client |
+| python-dotenv | BSD | Environment config |
+| python-multipart | Apache 2.0 | File upload support |
+| numpy / pandas | BSD | Numerical processing |
+| scikit-learn | BSD | Alarm correlation |
+| requests | Apache 2.0 | HTTP client |
+
 
 ## Expected Outcomes
 
@@ -140,3 +187,7 @@ GET http://localhost:8000/opea/health
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE)
+
+## Author
+
+Submitted to the **OPEA × ITU AI for Good Hackathon 2025** by Jamo642.

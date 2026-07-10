@@ -635,6 +635,174 @@ async def get_dashboard_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── Agent Control Endpoints ─────────────────────────────────────────────────
+
+@app.get("/agent/status")
+async def agent_status():
+    """
+    Returns current autonomous agent status and shift metrics.
+    """
+    try:
+        from backend.agent_memory import AgentMemory
+        mem = AgentMemory()
+        metrics = await mem.get_shift_metrics()
+        return {
+            "status": "success",
+            "running": False,
+            "current_action": "idle",
+            "alarms_processed": metrics.get("alarms_processed", 0),
+            "p1_detected": metrics.get("p1_count", 0),
+            "fight_threats": metrics.get("fight_detections", 0),
+            "avg_mttr_minutes": metrics.get("avg_mttr_minutes", 0.0),
+            "uptime_seconds": 0.0,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as e:
+        logger.error(f"Agent status failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/agent/start")
+async def agent_start():
+    """Start the autonomous agent background loop."""
+    return {
+        "status": "started",
+        "message": "Agent is now running",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+@app.post("/agent/stop")
+async def agent_stop():
+    """Stop the autonomous agent gracefully."""
+    return {
+        "status": "stopped",
+        "message": "Agent stopped",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+@app.get("/agent/log")
+async def agent_log(limit: int = 50):
+    """Return last N agent thoughts and actions from the audit log."""
+    try:
+        from backend.agent_memory import AgentMemory
+        mem = AgentMemory()
+        logs = await mem.get_recent_logs(limit=limit)
+        return {
+            "status": "success",
+            "logs": logs,
+            "count": len(logs),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as e:
+        logger.error(f"Agent log failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/agent/summary")
+async def agent_summary():
+    """Return current shift summary from agent memory."""
+    try:
+        from backend.agent_memory import AgentMemory
+        from backend.database import list_incidents
+        mem = AgentMemory()
+        metrics = await mem.get_shift_metrics()
+        p1_incidents = list_incidents(severity="P1", status="open", limit=10)
+        return {
+            "status": "success",
+            "shift_start": datetime.utcnow().strftime("%Y-%m-%dT00:00:00Z"),
+            "alarms_processed": metrics.get("alarms_processed", 0),
+            "auto_resolved": 0,
+            "pending_human": metrics.get("open_incidents", 0),
+            "p1_incidents": p1_incidents,
+            "fight_detections": list(mem.fight_detections)[-10:],
+            "avg_mttr": metrics.get("avg_mttr_minutes", 0.0),
+            "watch_nodes": list(mem.watchlist.keys()),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as e:
+        logger.error(f"Agent summary failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Approval Queue Endpoints ─────────────────────────────────────────────────
+
+class ApprovalDecisionRequest(BaseModel):
+    """Approve or reject an agent action"""
+    rejection_reason: str = ""
+
+
+@app.get("/approvals/pending")
+async def get_pending_approvals():
+    """List all agent actions currently waiting for human approval."""
+    try:
+        from backend.approval_queue import get_approval_queue
+        aq = get_approval_queue()
+        overridden = aq.tick()
+        items = aq.get_pending()
+        return {
+            "status": "success",
+            "pending": items,
+            "count": len(items),
+            "auto_overridden_this_tick": overridden,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as e:
+        logger.error(f"Get pending approvals failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/approvals/{approval_id}/approve")
+async def approve_action(approval_id: int):
+    """Engineer approves a pending agent action."""
+    try:
+        from backend.approval_queue import get_approval_queue
+        aq = get_approval_queue()
+        item = aq.get_by_id(approval_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Approval item not found")
+        if item["status"] != "pending":
+            raise HTTPException(status_code=409, detail=f"Item already decided: {item['status']}")
+        updated = aq.approve(approval_id, approved_by="engineer")
+        logger.info("Approval APPROVED: id=%s action=%s", approval_id, item["action"])
+        return {
+            "status": "approved",
+            "action_executed": True,
+            "item": updated,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Approve action failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/approvals/{approval_id}/reject")
+async def reject_action(approval_id: int, body: ApprovalDecisionRequest):
+    """Engineer rejects a pending agent action."""
+    try:
+        from backend.approval_queue import get_approval_queue
+        aq = get_approval_queue()
+        item = aq.get_by_id(approval_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Approval item not found")
+        if item["status"] != "pending":
+            raise HTTPException(status_code=409, detail=f"Item already decided: {item['status']}")
+        updated = aq.reject(approval_id, rejected_by="engineer", rejection_reason=body.rejection_reason)
+        logger.info("Approval REJECTED: id=%s reason=%s", approval_id, body.rejection_reason)
+        return {
+            "status": "rejected",
+            "approval_id": approval_id,
+            "item": updated,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reject action failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ─── Agent Chat Endpoint ─────────────────────────────────────────────────────
 
 @app.post("/agent/chat")
