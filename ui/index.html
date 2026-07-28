@@ -430,6 +430,35 @@
         }
         .demo-step-log.done  { border-left-color: var(--green); }
         .demo-step-log.error { border-left-color: var(--red); }
+        /* demo approval gate */
+        .demo-approval-gate {
+            border: 2px solid var(--orange); border-radius: var(--radius);
+            background: rgba(249,115,22,0.06); padding: 16px; margin-top: 10px;
+            animation: gateIn .3s ease-out;
+        }
+        @keyframes gateIn { from{transform:translateY(6px);opacity:0} to{transform:translateY(0);opacity:1} }
+        .demo-approval-gate.approved { border-color: var(--green); background: rgba(16,185,129,0.06); }
+        .demo-approval-gate.dismissed { border-color: var(--border); background: var(--bg-input); opacity: 0.6; }
+        .dag-header { display:flex; align-items:flex-start; gap:12px; margin-bottom:10px; }
+        .dag-lock { font-size:22px; line-height:1; flex-shrink:0; }
+        .dag-title { font-size:14px; font-weight:700; color:var(--orange); }
+        .dag-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+        .dag-note {
+            font-size:12px; color:var(--text); line-height:1.6;
+            background:rgba(249,115,22,0.08); border-radius:var(--radius-sm);
+            padding:8px 10px; margin-bottom:10px; border-left:3px solid var(--orange);
+        }
+        .dag-action {
+            font-size:12px; color:var(--text-dim); line-height:1.8;
+            background:var(--bg-input); border-radius:var(--radius-sm);
+            padding:10px 12px; margin-bottom:10px; border:1px solid var(--border-soft);
+            font-family:'Consolas','SF Mono',monospace;
+        }
+        .dag-warning { font-size:11px; color:var(--yellow); margin-bottom:12px; }
+        .dag-btns { display:flex; gap:10px; }
+        .dag-result { margin-top:10px; font-size:12px; font-weight:600; padding:8px 10px; border-radius:var(--radius-sm); }
+        .dag-result.approved-msg { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.3); }
+        .dag-result.dismissed-msg { background:var(--bg-input); color:var(--text-muted); }
         .arch-row {
             display: flex; gap: 8px; align-items: flex-start;
             font-size: 12px; color: var(--text-dim); line-height: 1.6;
@@ -792,7 +821,7 @@
                     </div>
                     <div class="card-body">
                         <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6">
-                            <strong style="color:var(--text)">What happens:</strong> Abnormal SS7 MAP-SRI queries flood STP-Core-01. The FiGHT engine matches the evidence against <strong style="color:var(--orange)">FGT5019 — SS7 Location Tracking via MAP-SRI</strong> from the MITRE FiGHT 5G database, scores confidence, and proposes a GSMA FS.11 firewall remediation for operator approval.
+                            <strong style="color:var(--text)">What happens:</strong> Abnormal SS7 MAP-SRI queries flood STP-Core-01. The FiGHT engine matches <strong style="color:var(--orange)">FGT5019</strong> from the MITRE FiGHT database, scores confidence, then <strong style="color:var(--text)">proposes a GSMA FS.11 firewall fix — but will NOT execute it</strong> until the operator explicitly clicks <strong style="color:var(--green)">Approve &amp; Apply</strong>. This is the gated remediation safety mechanism.
                         </div>
                         <div class="demo-pipeline">
                             <div class="dp-step">🚨 <span>SS7 flood detected</span> <span class="dp-badge">STP-Core-01</span></div>
@@ -801,7 +830,9 @@
                             <div class="dp-arrow">↓</div>
                             <div class="dp-step">🎯 <span>FGT5019 matched</span> <span class="dp-badge">SS7 MAP-SRI · MEDIUM confidence</span></div>
                             <div class="dp-arrow">↓</div>
-                            <div class="dp-step">🔐 <span>Gated remediation</span> <span class="dp-badge">Approve &amp; Apply</span></div>
+                            <div class="dp-step" style="border-color:rgba(249,115,22,0.4);background:rgba(249,115,22,0.06)">🔐 <span style="color:var(--orange)"><strong>Agent proposes fix — waits for human approval</strong></span> <span class="dp-badge" style="background:rgba(249,115,22,0.15);color:var(--orange);border-color:rgba(249,115,22,0.3)">Approve &amp; Apply</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step" style="border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.06)">✅ <span style="color:var(--green)"><strong>Operator approves → action logged to audit trail</strong></span> <span class="dp-badge" style="background:rgba(16,185,129,0.15);color:var(--green);border-color:rgba(16,185,129,0.3)">fight_remediations.jsonl</span></div>
                         </div>
                         <div class="demo-output" id="demo-output-2"></div>
                     </div>
@@ -818,16 +849,18 @@
                     </div>
                     <div class="card-body">
                         <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6">
-                            <strong style="color:var(--text)">What happens:</strong> The 5G AMF is overloaded with SCTP floods targeting the N2 interface. The FiGHT engine matches <strong style="color:var(--orange)">FGT1499 — Endpoint Denial of Service on N2</strong>, then the AI agent looks up the incident in the live database and retrieves the SCTP flood mitigation runbook.
+                            <strong style="color:var(--text)">What happens:</strong> The 5G AMF is under SCTP flood. The FiGHT engine matches <strong style="color:var(--orange)">FGT1499</strong>, the agent retrieves the SCTP ACL mitigation, then <strong style="color:var(--text)">presents it for operator approval</strong> before any change is made — demonstrating that AI never auto-executes on live network equipment.
                         </div>
                         <div class="demo-pipeline">
                             <div class="dp-step">📡 <span>AMF alarm fires</span> <span class="dp-badge">ALM-053 · 5G Core · P1</span></div>
                             <div class="dp-arrow">↓</div>
-                            <div class="dp-step">🛡️ <span>FiGHT matches</span> <span class="dp-badge">FGT1499 N2 DoS</span></div>
+                            <div class="dp-step">🛡️ <span>FiGHT matches FGT1499</span> <span class="dp-badge">N2 DoS</span></div>
                             <div class="dp-arrow">↓</div>
-                            <div class="dp-step">🔎 <span>Agent looks up incident</span> <span class="dp-badge">lookup_incident(ALM-053)</span></div>
+                            <div class="dp-step">🔎 <span>Agent looks up incident + KB</span> <span class="dp-badge">SCTP ACL + AMF rate-limit</span></div>
                             <div class="dp-arrow">↓</div>
-                            <div class="dp-step">📋 <span>Mitigation returned</span> <span class="dp-badge">SCTP ACL + AMF rate-limit</span></div>
+                            <div class="dp-step" style="border-color:rgba(249,115,22,0.4);background:rgba(249,115,22,0.06)">🔐 <span style="color:var(--orange)"><strong>Fix proposed — blocked until operator approves</strong></span> <span class="dp-badge" style="background:rgba(249,115,22,0.15);color:var(--orange);border-color:rgba(249,115,22,0.3)">Human-in-the-loop</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step" style="border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.06)">✅ <span style="color:var(--green)"><strong>Approved → logged to fight_remediations.jsonl</strong></span> <span class="dp-badge" style="background:rgba(16,185,129,0.15);color:var(--green);border-color:rgba(16,185,129,0.3)">Audit trail</span></div>
                         </div>
                         <div class="demo-output" id="demo-output-3"></div>
                     </div>
@@ -1541,7 +1574,13 @@
                 { label: '① Diagnosing ALM-051 (SS7 Signaling Anomaly)…', type: 'diagnose',
                   payload: { alarm_id:'ALM-051', alarm_name:'SS7 Signaling Anomaly', node_name:'STP-Core-01', alarm_type:'security', alarm_text:'Abnormal SS7 MAP SendRoutingInfo SRI-SM requests on STP-Core-01. Unknown GTT sending bulk location queries. SCCP message flood from external ISPC. 4200 MAP-SRI messages per minute targeting sequential MSISDNs.' } },
                 { label: '② Running MITRE FiGHT detection engine…', type: 'agent',
-                  payload: 'Run detect_fight_techniques on this evidence: "Abnormal SS7 MAP SendRoutingInfo SRI-SM requests on STP-Core-01. Unknown GTT sending bulk location queries. SCCP message flood from external ISPC. MAP-SRI bulk sequential MSISDN tracking." Report all matched techniques, confidence scores, and propose remediation.' }
+                  payload: 'Run detect_fight_techniques on this evidence: "Abnormal SS7 MAP SendRoutingInfo SRI-SM requests on STP-Core-01. Unknown GTT sending bulk location queries. SCCP message flood from external ISPC. MAP-SRI bulk sequential MSISDN tracking." Report all matched techniques, confidence scores, and propose remediation.' },
+                { label: '③ Agent proposes remediation — waiting for operator approval…', type: 'approval',
+                  technique_id: 'FGT5019',
+                  technique_name: 'SS7 Location Tracking via MAP-SRI',
+                  target: 'STP-Core-01',
+                  action: 'Deploy GSMA FS.11 / FS.19 SS7 firewall rules on STP-Core-01:\n1. Block MAP-SRI from all non-whitelisted ISPCs\n2. Rate-limit incoming SCCP to 200 msg/min per GT\n3. Enable SS7 anomaly alerting on HLR/HSS interface\n4. Apply GSMA FS.11 Category 1 screening rules',
+                  note: 'The AI has identified the threat and knows the fix. But it will NOT touch the network until YOU approve. This is the human-in-the-loop safety gate.' }
             ]
         },
         3: {
@@ -1549,7 +1588,13 @@
                 { label: '① Diagnosing ALM-053 (5G Core AMF Overload)…', type: 'diagnose',
                   payload: { alarm_id:'ALM-053', alarm_name:'5G Core AMF Overload', node_name:'AMF-Core-01', alarm_type:'security', alarm_text:'AMF-Core-01 SCTP connection flood on N2 interface. 50,000 NGAP Initial UE Messages per second. CPU 98%. AMF overloaded — rejecting legitimate UE registrations. Possible N2 interface DoS attack targeting 5G core.' } },
                 { label: '② Agent looking up incident + retrieving mitigation…', type: 'agent',
-                  payload: 'Look up incident ALM-053, detect any FiGHT techniques in its alarm text about 5G AMF SCTP flood N2 interface, then search the knowledge base for AMF overload mitigation and give me prioritised remediation steps.' }
+                  payload: 'Look up incident ALM-053, detect any FiGHT techniques in its alarm text about 5G AMF SCTP flood N2 interface, then search the knowledge base for AMF overload mitigation and give me prioritised remediation steps.' },
+                { label: '③ Agent proposes remediation — waiting for operator approval…', type: 'approval',
+                  technique_id: 'FGT1499',
+                  technique_name: 'Endpoint Denial of Service — SCTP Flood on N2',
+                  target: 'AMF-Core-01',
+                  action: 'Apply N2 interface SCTP flood mitigation on AMF-Core-01:\n1. Apply SCTP ACL: block source IPs not in gNB whitelist on port 38412\n2. Enable AMF per-UE rate-limiting: max 10 Initial UE Messages/sec per gNB\n3. Activate AMF overload control (3GPP TS 23.501 §5.19)\n4. Alert RAN team to isolate flooding gNB',
+                  note: 'The agent has the full fix ready. It is waiting for you to approve before touching AMF configuration. This prevents accidental changes on live 5G core.' }
             ]
         },
         4: {
@@ -1599,6 +1644,46 @@
                         log.className = 'demo-step-log error';
                         log.textContent = '✗ ' + step.label + ' — ' + JSON.stringify(d).slice(0,80);
                     }
+                } else if (step.type === 'approval') {
+                    // ── Gated remediation demo step ───────────────────────
+                    log.className = 'demo-step-log';
+                    log.style.borderLeftColor = 'var(--orange)';
+                    log.innerHTML = `🔐 ${escHtml(step.label.replace('…',''))}`;
+
+                    // Build the prominent approval gate widget
+                    const gateId = 'dgate-' + step.technique_id + '-' + Date.now();
+                    const gate = document.createElement('div');
+                    gate.id = gateId;
+                    gate.className = 'demo-approval-gate';
+                    gate.innerHTML = `
+                        <div class="dag-header">
+                            <span class="dag-lock">🔐</span>
+                            <div>
+                                <div class="dag-title">Remediation Proposed — Awaiting Operator Approval</div>
+                                <div class="dag-sub">${escHtml(step.technique_id)} · ${escHtml(step.technique_name)} · Target: <strong>${escHtml(step.target)}</strong></div>
+                            </div>
+                        </div>
+                        <div class="dag-note">${escHtml(step.note)}</div>
+                        <div class="dag-action">${escHtml(step.action).replace(/\n/g,'<br>')}</div>
+                        <div class="dag-warning">⚠️ The AI agent cannot execute this action on its own. A human operator must review and approve below.</div>
+                        <div class="dag-btns">
+                            <button class="btn btn-success" onclick="demoApprove('${gateId}','${escHtml(step.technique_id)}','${escHtml(step.target)}')">
+                                ✅ Approve &amp; Apply
+                            </button>
+                            <button class="btn btn-ghost" onclick="demoDismiss('${gateId}')">
+                                ✕ Dismiss
+                            </button>
+                        </div>`;
+                    out.appendChild(gate);
+                    out.scrollIntoView({ behavior:'smooth', block:'nearest' });
+                    // pause here — the step is "waiting" until the user interacts
+                    // We skip further steps until approval (handled by demoApprove/demoDismiss)
+                    // Store remaining step index so approval can continue
+                    gate.dataset.remainingSteps = JSON.stringify(cfg.steps.slice(cfg.steps.indexOf(step)+1));
+                    gate.dataset.scenarioNum = num;
+                    // break out of the loop — approval resumes it
+                    btn.disabled = false; btn.innerHTML = '⏸ Waiting for approval…';
+                    return; // stop runDemo here — demoApprove will call card.done
                 } else {
                     const res = await fetch(`${API_BASE}/agent/chat`, {
                         method:'POST', headers:{'Content-Type':'application/json'},
@@ -1616,7 +1701,7 @@
                         ans.style.cssText = 'margin-top:10px;padding:10px 12px;background:var(--bg-input);border-radius:var(--radius-sm);font-size:12px;border:1px solid var(--border-soft)';
                         ans.innerHTML = renderMd(d.answer);
                         out.appendChild(ans);
-                        // render any approval cards
+                        // render any approval cards from trace
                         for (const s of (d.trace||[])) {
                             if (s.type==='tool_call') {
                                 try {
@@ -1643,6 +1728,69 @@
         card.className = card.className.replace('running','').trim() + ' done';
         btn.disabled = false; btn.innerHTML = '✓ Done — Run Again';
         showToast(`Scenario ${num} complete`);
+    }
+
+    // ── Demo approval gate handlers ───────────────────────────────────────
+    async function demoApprove(gateId, techniqueId, target) {
+        const gate = document.getElementById(gateId);
+        if (!gate) return;
+        const num  = gate.dataset.scenarioNum;
+        const card = document.getElementById('dsc-' + num);
+        const btn  = card.querySelector('button');
+
+        // Disable buttons immediately
+        gate.querySelectorAll('button').forEach(b => b.disabled = true);
+        gate.querySelector('.dag-btns').innerHTML = '<span class="loading" style="font-size:12px;color:var(--text-muted)">⏳ Applying remediation…</span>';
+
+        try {
+            const res = await fetch(`${API_BASE}/agent/chat`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ query: `Execute approved remediation for MITRE FiGHT technique ${techniqueId} on target "${target}". confirmed=true. Log the remediation action to fight_remediations.jsonl.` })
+            });
+            const d = await res.json();
+
+            gate.className = 'demo-approval-gate approved';
+            gate.querySelector('.dag-title').textContent   = '✅ Remediation Approved & Applied';
+            gate.querySelector('.dag-title').style.color   = 'var(--green)';
+            gate.querySelector('.dag-lock').textContent    = '✅';
+            gate.querySelector('.dag-warning').remove();
+
+            const result = document.createElement('div');
+            result.className = 'dag-result approved-msg';
+            result.innerHTML = `✅ Action logged to <code>fight_remediations.jsonl</code> · ${d.iterations || 1} step(s)<br>
+                <span style="font-weight:normal;color:var(--text-dim);font-size:11px">${escHtml((d.answer||'').slice(0,200))}${(d.answer||'').length>200?'…':''}</span>`;
+            gate.querySelector('.dag-btns').replaceWith(result);
+
+            showToast(`✅ Remediation for ${techniqueId} approved and logged`);
+        } catch(e) {
+            gate.querySelector('.dag-btns').innerHTML = `<span style="color:var(--red);font-size:12px">Error: ${escHtml(e.message)}</span>`;
+        }
+
+        // Mark scenario done
+        card.className = card.className.replace('running','').trim() + ' done';
+        btn.disabled = false; btn.innerHTML = '✓ Done — Run Again';
+    }
+
+    function demoDismiss(gateId) {
+        const gate = document.getElementById(gateId);
+        if (!gate) return;
+        const num  = gate.dataset.scenarioNum;
+        const card = document.getElementById('dsc-' + num);
+        const btn  = card.querySelector('button');
+
+        gate.className = 'demo-approval-gate dismissed';
+        gate.querySelector('.dag-title').textContent = '✕ Remediation Dismissed by Operator';
+        gate.querySelector('.dag-title').style.color = 'var(--text-muted)';
+        gate.querySelector('.dag-lock').textContent  = '✕';
+
+        const result = document.createElement('div');
+        result.className = 'dag-result dismissed-msg';
+        result.textContent = 'Dismissed — no action taken. The network was not changed.';
+        gate.querySelector('.dag-btns').replaceWith(result);
+
+        card.className = card.className.replace('running','').trim() + ' done';
+        btn.disabled = false; btn.innerHTML = '↺ Run Again';
+        showToast('Remediation dismissed — no action taken');
     }
 
     // ── Init ──────────────────────────────────────────────────────────────
