@@ -399,6 +399,43 @@
         details summary:hover { color: var(--text-dim); }
         details[open] summary { margin-bottom: 8px; }
         code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-size: 12px; font-family: 'Consolas','SF Mono',monospace; }
+
+        /* ── Demo scenarios ────────────────────────────────────────────── */
+        .demo-scenario-card { transition: box-shadow 0.2s; }
+        .demo-scenario-card.running { box-shadow: 0 0 0 2px var(--blue); }
+        .demo-scenario-card.done    { box-shadow: 0 0 0 2px var(--green); }
+        .demo-pipeline { display: flex; flex-direction: column; gap: 0; margin-bottom: 12px; }
+        .dp-step {
+            display: flex; align-items: center; gap: 8px; font-size: 12px;
+            background: var(--bg-input); border: 1px solid var(--border-soft);
+            border-radius: var(--radius-sm); padding: 7px 10px;
+        }
+        .dp-step span:first-of-type { flex: 1; color: var(--text-dim); }
+        .dp-badge {
+            font-size: 10px; font-weight: 600; background: rgba(59,130,246,0.1);
+            color: var(--blue); border: 1px solid rgba(59,130,246,0.2);
+            border-radius: 20px; padding: 1px 8px; white-space: nowrap;
+        }
+        .dp-arrow { text-align: center; font-size: 12px; color: var(--text-muted); line-height: 1; padding: 2px 0; }
+        .demo-output {
+            margin-top: 12px; font-size: 12px; line-height: 1.6;
+            border-top: 1px solid var(--border-soft); padding-top: 10px;
+            display: none;
+        }
+        .demo-output.visible { display: block; }
+        .demo-step-log {
+            font-size: 11px; color: var(--text-muted); font-family: 'Consolas','SF Mono',monospace;
+            background: var(--bg-input); border-radius: var(--radius-sm);
+            padding: 8px 10px; margin-bottom: 8px; border-left: 3px solid var(--border);
+        }
+        .demo-step-log.done  { border-left-color: var(--green); }
+        .demo-step-log.error { border-left-color: var(--red); }
+        .arch-row {
+            display: flex; gap: 8px; align-items: flex-start;
+            font-size: 12px; color: var(--text-dim); line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        .arch-row code { font-size: 11px; }
     </style>
 </head>
 <body>
@@ -457,6 +494,10 @@
         <div class="nav-section">Monitoring</div>
         <button class="nav-item" onclick="switchTab('escalations')" id="nav-escalations">
             <span class="nav-icon">🔔</span> Escalations
+        </button>
+        <div class="nav-section">Learn</div>
+        <button class="nav-item" onclick="switchTab('demo')" id="nav-demo">
+            <span class="nav-icon">🎬</span> Demo Scenarios
         </button>
         <div class="nav-section">System</div>
         <button class="nav-item" onclick="switchTab('settings')" id="nav-settings">
@@ -583,10 +624,12 @@
                         </div>
                         <div class="quick-btns">
                             <span class="quick-label">Quick:</span>
-                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('What BGP issues are open and what do the logs say?')">BGP issues</button>
-                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('Are there any SS7 or 5G signalling threats in current alerts?')">SS7 threats</button>
-                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('Show me all P1 and P2 incidents and their root causes')">P1/P2 summary</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('What are the most critical active alerts right now? List all P1 and P2 incidents.')">P1/P2 alerts</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('What BGP issues are open and what do the logs say about Router-KNB-04?')">BGP logs</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('Are there any SS7 or 5G core security threats in the current alerts? Run detect_fight_techniques on ALM-051 and ALM-052.')">SS7 threats</button>
                             <button class="btn btn-ghost btn-xs" onclick="quickAsk('What is causing high CPU on BNG-East and what do the logs show?')">BNG-East CPU</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('Search the knowledge base for SS7 MAP-SRI location tracking attacks and how to mitigate them.')">KB: SS7 mitigation</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('Look up incident ALM-053 and explain the 5G Core AMF Overload root cause and remediation steps.')">AMF Overload</button>
                         </div>
                     </div>
                 </div>
@@ -609,6 +652,16 @@
                             <div class="form-group">
                                 <label class="form-label">Asset / Node (optional)</label>
                                 <input type="text" id="fightAsset" placeholder="e.g. STP-Core-01">
+                            </div>
+                            <div style="margin-bottom:10px">
+                                <div class="form-label" style="margin-bottom:6px">Load demo evidence:</div>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                    <button class="btn btn-ghost btn-xs" onclick="loadFightDemo('ss7')">SS7 Tracking</button>
+                                    <button class="btn btn-ghost btn-xs" onclick="loadFightDemo('gtp')">GTP Hijack</button>
+                                    <button class="btn btn-ghost btn-xs" onclick="loadFightDemo('5gcore')">5G Core Sniff</button>
+                                    <button class="btn btn-ghost btn-xs" onclick="loadFightDemo('rogue')">Rogue gNB</button>
+                                    <button class="btn btn-ghost btn-xs" onclick="loadFightDemo('brute')">AKA Brute Force</button>
+                                </div>
                             </div>
                             <button class="btn btn-primary" onclick="runFightDetection()" id="fightBtn" style="width:100%;justify-content:center">
                                 🔍 Detect Threats
@@ -688,6 +741,149 @@
                                 <button class="btn btn-ghost btn-sm" onclick="saveKey('groq')">Save &amp; Use</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Demo Scenarios ───────────────────────────────────────────── -->
+        <div id="tab-demo" class="page">
+            <div class="page-title"><span class="icon">🎬</span> Demo Scenarios</div>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;max-width:820px;line-height:1.7">
+                Each scenario below shows the <strong style="color:var(--text)">full pipeline</strong>: a real network event triggers alarm ingestion → the AI diagnoses root cause → the MITRE FiGHT engine checks for 5G threats → the agent retrieves runbook knowledge and proposes remediation. Click <strong style="color:var(--blue)">Run Demo</strong> to execute each step live against the backend.
+            </p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px" id="demoCardGrid">
+
+                <!-- Scenario 1 -->
+                <div class="card demo-scenario-card" id="dsc-1">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <span style="background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">P2</span>
+                            Scenario 1 — BGP Session Failure
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="runDemo(1)">▶ Run Demo</button>
+                    </div>
+                    <div class="card-body">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6">
+                            <strong style="color:var(--text)">What happens:</strong> BGP peering drops on Router-KNB-04. The agent queries live alerts, reads the BGP convergence log, searches the runbook knowledge base, and returns a step-by-step fix plan — all without a human typing a single query.
+                        </div>
+                        <div class="demo-pipeline">
+                            <div class="dp-step">📥 <span>Alarm ingested</span> <span class="dp-badge">ALM-001 · BGP · P2</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🔍 <span>AI diagnoses</span> <span class="dp-badge">Root cause + severity</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">📚 <span>KB search</span> <span class="dp-badge">bgp_troubleshooting.md</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🤖 <span>Agent answers</span> <span class="dp-badge">Step-by-step fix</span></div>
+                        </div>
+                        <div class="demo-output" id="demo-output-1"></div>
+                    </div>
+                </div>
+
+                <!-- Scenario 2 -->
+                <div class="card demo-scenario-card" id="dsc-2">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <span style="background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">P1</span>
+                            Scenario 2 — SS7 Location Tracking (FGT5019)
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="runDemo(2)">▶ Run Demo</button>
+                    </div>
+                    <div class="card-body">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6">
+                            <strong style="color:var(--text)">What happens:</strong> Abnormal SS7 MAP-SRI queries flood STP-Core-01. The FiGHT engine matches the evidence against <strong style="color:var(--orange)">FGT5019 — SS7 Location Tracking via MAP-SRI</strong> from the MITRE FiGHT 5G database, scores confidence, and proposes a GSMA FS.11 firewall remediation for operator approval.
+                        </div>
+                        <div class="demo-pipeline">
+                            <div class="dp-step">🚨 <span>SS7 flood detected</span> <span class="dp-badge">STP-Core-01</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🛡️ <span>MITRE FiGHT scan</span> <span class="dp-badge">10 techniques checked</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🎯 <span>FGT5019 matched</span> <span class="dp-badge">SS7 MAP-SRI · MEDIUM confidence</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🔐 <span>Gated remediation</span> <span class="dp-badge">Approve &amp; Apply</span></div>
+                        </div>
+                        <div class="demo-output" id="demo-output-2"></div>
+                    </div>
+                </div>
+
+                <!-- Scenario 3 -->
+                <div class="card demo-scenario-card" id="dsc-3">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <span style="background:rgba(249,115,22,0.15);color:var(--orange);border:1px solid rgba(249,115,22,0.3);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">P2</span>
+                            Scenario 3 — 5G Core AMF Overload (FGT1499)
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="runDemo(3)">▶ Run Demo</button>
+                    </div>
+                    <div class="card-body">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6">
+                            <strong style="color:var(--text)">What happens:</strong> The 5G AMF is overloaded with SCTP floods targeting the N2 interface. The FiGHT engine matches <strong style="color:var(--orange)">FGT1499 — Endpoint Denial of Service on N2</strong>, then the AI agent looks up the incident in the live database and retrieves the SCTP flood mitigation runbook.
+                        </div>
+                        <div class="demo-pipeline">
+                            <div class="dp-step">📡 <span>AMF alarm fires</span> <span class="dp-badge">ALM-053 · 5G Core · P1</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🛡️ <span>FiGHT matches</span> <span class="dp-badge">FGT1499 N2 DoS</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🔎 <span>Agent looks up incident</span> <span class="dp-badge">lookup_incident(ALM-053)</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">📋 <span>Mitigation returned</span> <span class="dp-badge">SCTP ACL + AMF rate-limit</span></div>
+                        </div>
+                        <div class="demo-output" id="demo-output-3"></div>
+                    </div>
+                </div>
+
+                <!-- Scenario 4 -->
+                <div class="card demo-scenario-card" id="dsc-4">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <span style="background:rgba(245,158,11,0.15);color:var(--yellow);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700">P3</span>
+                            Scenario 4 — BNG High CPU + Log Correlation
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="runDemo(4)">▶ Run Demo</button>
+                    </div>
+                    <div class="card-body">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6">
+                            <strong style="color:var(--text)">What happens:</strong> BNG-East CPU spikes to 94%. The agent reads live logs (<code>bng_east_high_cpu.log</code>), correlates with open P2/P3 alerts on the same node, cross-references the CPU/memory runbook from ChromaDB, and produces a prioritised action list.
+                        </div>
+                        <div class="demo-pipeline">
+                            <div class="dp-step">⚡ <span>CPU spike alert</span> <span class="dp-badge">BNG-East · 94% · P3</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">📄 <span>Log retrieval</span> <span class="dp-badge">get_logs(bng_east_high_cpu)</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">🔗 <span>Alarm correlation</span> <span class="dp-badge">get_active_alerts(BNG-East)</span></div>
+                            <div class="dp-arrow">↓</div>
+                            <div class="dp-step">📚 <span>RAG retrieval</span> <span class="dp-badge">cpu_memory_guide.md</span></div>
+                        </div>
+                        <div class="demo-output" id="demo-output-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Architecture explainer -->
+            <div class="card" style="max-width:820px">
+                <div class="card-header"><div class="card-header-left">🏗️ How the Pipeline Works</div></div>
+                <div class="card-body">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                        <div>
+                            <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Data Sources</div>
+                            <div class="arch-row">📊 <span><strong>SQLite</strong> — live alarm database (telenoc.db). Every diagnosed alarm is stored here with severity, root cause, MTTR timer.</span></div>
+                            <div class="arch-row">📄 <span><strong>Log files</strong> — raw device logs per node. The agent calls <code>get_logs(node)</code> to read them in real time.</span></div>
+                            <div class="arch-row">🧠 <span><strong>ChromaDB</strong> — vector database of 50 telecom runbooks and past incidents. Searched by semantic similarity (BAAI/bge-small embeddings).</span></div>
+                            <div class="arch-row">🛡️ <span><strong>MITRE FiGHT</strong> — 10 curated 5G attack techniques. Matched against alarm text using keyword + phrase scoring.</span></div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Agent Tools</div>
+                            <div class="arch-row">🔧 <code>get_active_alerts</code> — query live incidents by severity / node</div>
+                            <div class="arch-row">🔧 <code>get_logs</code> — read raw log files for a given node</div>
+                            <div class="arch-row">🔧 <code>lookup_incident</code> — fetch a specific alarm by ID</div>
+                            <div class="arch-row">🔧 <code>search_knowledge_base</code> — semantic RAG over runbooks</div>
+                            <div class="arch-row">🔧 <code>detect_fight_techniques</code> — run MITRE FiGHT scan</div>
+                            <div class="arch-row">🔐 <code>remediate_fight_technique</code> — <span style="color:var(--orange)">gated — requires confirmed=true</span></div>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-soft);font-size:12px;color:var(--text-muted);line-height:1.7">
+                        <strong style="color:var(--text)">OPEA Integration:</strong> When started with <code>./deploy.sh --opea</code>, the RAG layer switches from local ChromaDB to <code>opea/embedding-tei</code> + <code>opea/retriever-redis</code> + <code>opea/chatqna</code>. The fallback to local ChromaDB is automatic — zero downtime.
                     </div>
                 </div>
             </div>
@@ -1063,7 +1259,7 @@
                         } catch(_) {}
                     }
                 }
-                const meta = `model: ${escHtml(d.model)} &nbsp;·&nbsp; ${d.iterations} step(s)`;
+                const meta = `${d.iterations} step(s)`;
                 appendMessage('agent', `<div>${renderMd(d.answer)}</div>${approvalHtml}${renderTrace(d.trace)}`, meta);
             } else {
                 appendMessage('agent', `<span style="color:var(--red)">Error: ${escHtml(JSON.stringify(d))}</span>`);
@@ -1296,6 +1492,157 @@
                 showToast('Error: ' + (d.detail||JSON.stringify(d)), 'error');
             }
         } catch(e) { showToast('Request failed: ' + e.message, 'error'); }
+    }
+
+    // ── FiGHT demo quick-fill ─────────────────────────────────────────────
+    const FIGHT_DEMOS = {
+        ss7: {
+            text: `Abnormal SS7 MAP SendRoutingInfo (SRI) queries detected on STP-Core-01.\nExternal ISPC 0x0012ab sending bulk SRI requests targeting sequential MSISDNs.\nSCCP flood: 4,200 messages/min from unknown GT address 491771234567.\nSS7 MAP location query volume 800% above baseline.\nSuggested query: map-sri bulk sequential MSISDN GT unknown`,
+            asset: 'STP-Core-01'
+        },
+        gtp: {
+            text: `GTP-C Create Session Request spoofing detected on S-GW-01.\nIMSI 310260123456789 creating duplicate tunnel with forged TEID.\nGTP-U tunnel injection on interface Gi 0/1/0.\nUnauthorised TEID 0x0000BEEF detected in GTP-C flow.\nGTP tunnel hijack attempt on core network interface.`,
+            asset: 'S-GW-01'
+        },
+        '5gcore': {
+            text: `5G Core network sniffing detected on N6 interface.\nUnauthorised packet capture tool detected on UPF-01.\nN4 PFCP session establishment from unregistered SMF.\nSuspicious NF registration in NRF with duplicate NF instance ID.\nRAW socket opened on N3 interface by unknown process PID 4821.`,
+            asset: 'UPF-01'
+        },
+        rogue: {
+            text: `Rogue gNodeB detected in sector 4, cell ID 12345.\nUE reporting neighbour cell with unusually strong signal -52 dBm.\nIMSI catcher activity: 47 UEs attached to unregistered cell.\nN2 interface connection attempt from IP 10.99.1.5 (not in AMF whitelist).\ngNB claiming to be legit but certificate mismatch on SCTP connection.`,
+            asset: 'RAN-Sector-4'
+        },
+        brute: {
+            text: `5G AKA authentication failures spiking on AMF-01.\n340 failed AUTN verification attempts in 60 seconds.\nSame SUPI 310260000000001 retrying EAP-AKA with modified MAC values.\nAMF detecting replay attack: sequence number mismatch in AUTN.\nBrute force attempt on 5G subscriber authentication vectors.`,
+            asset: 'AMF-01'
+        }
+    };
+
+    function loadFightDemo(key) {
+        const d = FIGHT_DEMOS[key];
+        if (!d) return;
+        document.getElementById('fightInput').value = d.text;
+        document.getElementById('fightAsset').value = d.asset;
+        showToast(`Demo evidence loaded: ${key.toUpperCase()}`);
+    }
+
+    // ── Demo scenario runner ───────────────────────────────────────────────
+    const DEMO_QUERIES = {
+        1: {
+            steps: [
+                { label: '① Diagnosing ALM-001 (BGP Session Dropped)…', type: 'diagnose',
+                  payload: { alarm_id:'ALM-001', alarm_name:'BGP Session Dropped', node_name:'Router-KNB-04', alarm_type:'bgp', alarm_text:'BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 unreachable. Route prefix count dropped from 500K to 0. TCP port 179 timeout after 180s hold-down.' } },
+                { label: '② Agent querying logs + knowledge base…', type: 'agent',
+                  payload: 'Look up incident ALM-001 on Router-KNB-04, read the bgp_convergence_region_a logs, and search the knowledge base for BGP session drop remediation. Give me a step-by-step fix for a NOC operator.' }
+            ]
+        },
+        2: {
+            steps: [
+                { label: '① Diagnosing ALM-051 (SS7 Signaling Anomaly)…', type: 'diagnose',
+                  payload: { alarm_id:'ALM-051', alarm_name:'SS7 Signaling Anomaly', node_name:'STP-Core-01', alarm_type:'security', alarm_text:'Abnormal SS7 MAP SendRoutingInfo SRI-SM requests on STP-Core-01. Unknown GTT sending bulk location queries. SCCP message flood from external ISPC. 4200 MAP-SRI messages per minute targeting sequential MSISDNs.' } },
+                { label: '② Running MITRE FiGHT detection engine…', type: 'agent',
+                  payload: 'Run detect_fight_techniques on this evidence: "Abnormal SS7 MAP SendRoutingInfo SRI-SM requests on STP-Core-01. Unknown GTT sending bulk location queries. SCCP message flood from external ISPC. MAP-SRI bulk sequential MSISDN tracking." Report all matched techniques, confidence scores, and propose remediation.' }
+            ]
+        },
+        3: {
+            steps: [
+                { label: '① Diagnosing ALM-053 (5G Core AMF Overload)…', type: 'diagnose',
+                  payload: { alarm_id:'ALM-053', alarm_name:'5G Core AMF Overload', node_name:'AMF-Core-01', alarm_type:'security', alarm_text:'AMF-Core-01 SCTP connection flood on N2 interface. 50,000 NGAP Initial UE Messages per second. CPU 98%. AMF overloaded — rejecting legitimate UE registrations. Possible N2 interface DoS attack targeting 5G core.' } },
+                { label: '② Agent looking up incident + retrieving mitigation…', type: 'agent',
+                  payload: 'Look up incident ALM-053, detect any FiGHT techniques in its alarm text about 5G AMF SCTP flood N2 interface, then search the knowledge base for AMF overload mitigation and give me prioritised remediation steps.' }
+            ]
+        },
+        4: {
+            steps: [
+                { label: '① Diagnosing BNG-East CPU spike…', type: 'diagnose',
+                  payload: { alarm_id:'ALM-007', alarm_name:'High CPU Utilization', node_name:'BNG-East', alarm_type:'cpu', alarm_text:'CPU utilization 94% on BNG-East. Process ip_input consuming 67% CPU. Subscriber session table at 98% capacity (49,800/50,000). PPPoE session establishment rate 3x normal. Memory 89% used.' } },
+                { label: '② Reading BNG-East logs + correlating active alarms…', type: 'agent',
+                  payload: 'What is causing high CPU on BNG-East? Read the bng_east_high_cpu logs, get all active alerts for BNG-East, and search the knowledge base for high CPU and memory utilization troubleshooting. Return a prioritised action list.' }
+            ]
+        }
+    };
+
+    async function runDemo(num) {
+        const card = document.getElementById('dsc-' + num);
+        const out  = document.getElementById('demo-output-' + num);
+        const btn  = card.querySelector('button');
+        const cfg  = DEMO_QUERIES[num];
+
+        card.className = card.className.replace(/running|done/g,'').trim() + ' running';
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+        out.innerHTML = ''; out.classList.add('visible');
+
+        for (const step of cfg.steps) {
+            const log = document.createElement('div');
+            log.className = 'demo-step-log loading';
+            log.textContent = step.label;
+            out.appendChild(log);
+            out.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+            try {
+                if (step.type === 'diagnose') {
+                    const res = await fetch(`${API_BASE}/diagnose`, {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify(step.payload)
+                    });
+                    const d = await res.json();
+                    if (d.status === 'success') {
+                        const r = d.diagnosis;
+                        log.className = 'demo-step-log done';
+                        log.innerHTML = `✓ ${step.label.replace('…','')}<br>
+                            <span style="color:var(--text)">Severity: <strong style="color:${r.severity==='P1'?'var(--red)':r.severity==='P2'?'var(--orange)':'var(--yellow)'}">${r.severity}</strong>
+                            · Confidence: ${(r.confidence*100).toFixed(0)}%
+                            · FiGHT: ${r.fight_detection?.suspicious ? '<strong style="color:var(--red)">⚠ SUSPICIOUS</strong>' : '✓ clean'}
+                            </span><br>
+                            <span style="color:var(--text-dim)">Root cause: ${escHtml(r.root_cause||'')}</span>`;
+                    } else {
+                        log.className = 'demo-step-log error';
+                        log.textContent = '✗ ' + step.label + ' — ' + JSON.stringify(d).slice(0,80);
+                    }
+                } else {
+                    const res = await fetch(`${API_BASE}/agent/chat`, {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ query: step.payload })
+                    });
+                    const d = await res.json();
+                    if (d.status === 'success') {
+                        const toolsUsed = (d.trace||[]).filter(s=>s.type==='tool_call').map(s=>s.tool);
+                        log.className = 'demo-step-log done';
+                        log.innerHTML = `✓ ${step.label.replace('…','')}<br>
+                            <span style="color:var(--cyan)">Tools called: ${toolsUsed.map(t=>`<code>${escHtml(t)}</code>`).join(' → ') || 'none'}</span><br>
+                            <span style="color:var(--text-muted)">${d.iterations} iteration(s)</span>`;
+                        // render the full answer below the log
+                        const ans = document.createElement('div');
+                        ans.style.cssText = 'margin-top:10px;padding:10px 12px;background:var(--bg-input);border-radius:var(--radius-sm);font-size:12px;border:1px solid var(--border-soft)';
+                        ans.innerHTML = renderMd(d.answer);
+                        out.appendChild(ans);
+                        // render any approval cards
+                        for (const s of (d.trace||[])) {
+                            if (s.type==='tool_call') {
+                                try {
+                                    const r = JSON.parse(s.result||'{}');
+                                    if (r.requires_approval && r.technique_id) {
+                                        const ac = document.createElement('div');
+                                        ac.innerHTML = renderApprovalCard(r, r.target||'');
+                                        out.appendChild(ac.firstElementChild);
+                                    }
+                                } catch(_) {}
+                            }
+                        }
+                    } else {
+                        log.className = 'demo-step-log error';
+                        log.textContent = '✗ ' + step.label + ' — ' + JSON.stringify(d).slice(0,80);
+                    }
+                }
+            } catch(e) {
+                log.className = 'demo-step-log error';
+                log.textContent = '✗ ' + step.label + ': ' + e.message;
+            }
+        }
+
+        card.className = card.className.replace('running','').trim() + ' done';
+        btn.disabled = false; btn.innerHTML = '✓ Done — Run Again';
+        showToast(`Scenario ${num} complete`);
     }
 
     // ── Init ──────────────────────────────────────────────────────────────
