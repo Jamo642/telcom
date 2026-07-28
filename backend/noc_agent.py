@@ -59,58 +59,57 @@ def _utc_iso() -> str:
 def _call_llm_with_tools(
     messages: List[Dict[str, Any]],
     tools: List[Dict[str, Any]],
-    openrouter_api_key: str,
-    openrouter_model: str,
-    free_fallbacks: List[str],
+    api_key: str,
+    model: str,
+    fallbacks: List[str],
+    base_url: str = "https://openrouter.ai/api/v1/chat/completions",
+    extra_headers: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """
-    Call OpenRouter with tool schemas. Returns the raw LLM response message dict.
-    Walks the free-model fallback chain on error/429.
+    Call an OpenAI-compatible chat/completions endpoint with tool schemas.
+    Works with both OpenRouter and NVIDIA NIM (same wire format).
+    Walks the fallback model list on error/429.
     """
     from urllib import request as url_request, error as url_error
 
-    headers = {
-        "Authorization": f"Bearer {openrouter_api_key}",
+    headers: Dict[str, str] = {
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/telenoc-ai",
-        "X-Title": "TeleNOC AI",
     }
+    if base_url.startswith("https://openrouter.ai"):
+        headers["HTTP-Referer"] = "https://github.com/telenoc-ai"
+        headers["X-Title"] = "TeleNOC AI"
+    if extra_headers:
+        headers.update(extra_headers)
 
-    models_to_try = [openrouter_model] + [
-        m for m in free_fallbacks if m != openrouter_model
-    ]
+    models_to_try = [model] + [m for m in fallbacks if m != model]
 
-    for model in models_to_try:
+    for m in models_to_try:
         payload = json.dumps({
-            "model": model,
+            "model": m,
             "messages": messages,
-            "tools": tools,
-            "tool_choice": "auto",
+            "tools": tools if tools else None,
+            "tool_choice": "auto" if tools else None,
             "max_tokens": 1024,
             "temperature": 0.2,
         }).encode()
 
-        req = url_request.Request(
-            "https://openrouter.ai/api/v1/chat/completions",
-            data=payload,
-            headers=headers,
-            method="POST",
-        )
+        req = url_request.Request(base_url, data=payload, headers=headers, method="POST")
         try:
             with url_request.urlopen(req, timeout=60) as resp:
                 data = json.loads(resp.read().decode())
             choices = data.get("choices") or []
             if not choices:
-                logger.warning("Agent LLM: empty choices from %s", model)
+                logger.warning("Agent LLM: empty choices from %s", m)
                 continue
             msg = choices[0]["message"]
-            msg["_model"] = model  # tag which model answered
+            msg["_model"] = m
             return msg
         except url_error.HTTPError as exc:
-            logger.warning("Agent LLM: %s returned HTTP %s, trying next", model, exc.code)
+            logger.warning("Agent LLM: %s returned HTTP %s, trying next", m, exc.code)
             continue
         except Exception as exc:
-            logger.warning("Agent LLM: %s failed (%s), trying next", model, exc)
+            logger.warning("Agent LLM: %s failed (%s), trying next", m, exc)
             continue
 
     return {"role": "assistant", "content": "ERROR: All LLM models failed.", "_model": "none"}
@@ -185,17 +184,43 @@ def run_agent(
     """
     from backend.noc_tools import TOOL_SCHEMAS
 
-    api_key = os.environ.get("OPENROUTER_API_KEY", "")
-    primary_model = os.environ.get(
-        "OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free"
-    )
-    free_fallbacks = [
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "nvidia/nemotron-3-super-120b-a12b:free",
-        "qwen/qwen3-next-80b-a3b-instruct:free",
-        "qwen/qwen3-coder:free",
-        "meta-llama/llama-3.2-3b-instruct:free",
-    ]
+    # ── Resolve LLM endpoint ─────────────────────────────────────────────────
+    # Priority: NVIDIA NIM (if key present) → OpenRouter (if key present)
+    nvidia_key      = os.environ.get("NVIDIA_API_KEY", "")
+    openrouter_key  = os.environ.get("OPENROUTER_API_KEY", "")
+
+    if nvidia_key:
+        api_key       = nvidia_key
+        primary_model = os.environ.get("NVIDIA_MODEL", "meta/llama-3.3-70b-instruct")
+        fallbacks     = [
+            "meta/llama-3.1-70b-instruct",
+            "meta/llama-3.2-3b-instruct",
+        ]
+        base_url      = "https://integrate.api.nvidia.com/v1/chat/completions"
+        logger.info("Agent using NVIDIA NIM endpoint, model=%s", primary_model)
+    elif openrouter_key:
+        api_key       = openrouter_key
+        primary_model = os.environ.get(
+            "OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free"
+        )
+        fallbacks     = [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "qwen/qwen3-next-80b-a3b-instruct:free",
+            "qwen/qwen3-coder:free",
+            "meta-llama/llama-3.2-3b-instruct:free",
+        ]
+        base_url      = "https://openrouter.ai/api/v1/chat/completions"
+        logger.info("Agent using OpenRouter endpoint, model=%s", primary_model)
+    else:
+        logger.error("No LLM API key configured (NVIDIA_API_KEY or OPENROUTER_API_KEY)")
+        return {
+            "answer":     "No LLM API key configured. Set NVIDIA_API_KEY or OPENROUTER_API_KEY in .env.",
+            "trace":      [],
+            "iterations": 0,
+            "model":      "none",
+            "session_id": session_id or "none",
+        }
 
     session_id = session_id or f"agent-{int(time.time())}"
     trace: List[Dict[str, Any]] = []
@@ -216,7 +241,7 @@ def run_agent(
         # ── Call LLM ─────────────────────────────────────────────────────────
         t0 = time.time()
         llm_msg = _call_llm_with_tools(
-            messages, TOOL_SCHEMAS, api_key, primary_model, free_fallbacks
+            messages, TOOL_SCHEMAS, api_key, primary_model, fallbacks, base_url
         )
         elapsed = round(time.time() - t0, 2)
         used_model = llm_msg.get("_model", primary_model)
@@ -321,7 +346,7 @@ def run_agent(
     })
     t0 = time.time()
     final_msg = _call_llm_with_tools(
-        messages, [], api_key, primary_model, free_fallbacks  # empty tools → forces text answer
+        messages, [], api_key, primary_model, fallbacks, base_url  # empty tools → forces text answer
     )
     elapsed = round(time.time() - t0, 2)
     cap_content = final_msg.get("content") or (

@@ -5,10 +5,12 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install only the packages the backend actually uses (not streamlit/pandas/sklearn/etc.)
+# This keeps pip install under ~2 min on a clean machine.
+COPY requirements.backend.txt .
+RUN pip install --no-cache-dir -r requirements.backend.txt
 
-# Pre-download embedding model during build
+# Pre-download embedding model during build so there is zero network access at runtime
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
 
 COPY backend/ ./backend/

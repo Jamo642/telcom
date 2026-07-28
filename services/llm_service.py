@@ -45,7 +45,11 @@ class LLMService:
         """
         self.ollama_host = ollama_host or os.environ.get("OLLAMA_HOST", "http://ollama:11434")
         self.model_name = os.environ.get("LLM_MODEL", model_name)
-        self.preferred_provider = os.environ.get("LLM_PROVIDER", "groq").lower()
+        # Determine preferred provider: if NVIDIA key is set, default to nvidia
+        _default_provider = "nvidia" if os.environ.get("NVIDIA_API_KEY") else (
+            "openrouter" if os.environ.get("OPENROUTER_API_KEY") else "groq"
+        )
+        self.preferred_provider = os.environ.get("LLM_PROVIDER", _default_provider).lower()
         self.chatqna_host = os.environ.get("CHATQNA_SERVICE_HOST", "chatqna")
         self.chatqna_port = int(os.environ.get("CHATQNA_SERVICE_PORT", "8888"))
         self.chatqna_endpoint = os.environ.get(
@@ -160,17 +164,12 @@ class LLMService:
 
     def is_available(self) -> bool:
         """Check if any LLM provider is available."""
-        # Check API-based providers first
-        if self.openrouter_api_key:
-            return True
-        if self.groq_api_key:
-            return True
-        if self.nvidia_api_key:
-            return True
-        if self.hf_api_key:
-            return True
-        # Fallback to Ollama
-        return self._get_health(f"{self.ollama_host}/api/tags")
+        return bool(
+            self.openrouter_api_key
+            or self.groq_api_key
+            or self.nvidia_api_key
+            or self.hf_api_key
+        )
 
     def generate_response(
         self,
@@ -220,7 +219,9 @@ class LLMService:
 
     def _get_provider_order(self, preferred: str) -> List[str]:
         """Get ordered list of providers to try."""
-        priority = ["openrouter", "groq", "nvidia", "huggingface", "ollama"]
+        # Ollama is intentionally excluded — it requires a ~4 GB local model download
+        # and would break the 10-minute setup constraint. Use OpenRouter (free) instead.
+        priority = ["nvidia", "openrouter", "groq", "huggingface"]
 
         # Remove providers without API keys
         available = []
@@ -233,8 +234,6 @@ class LLMService:
                 available.append(p)
             elif p == "huggingface" and self.hf_api_key:
                 available.append(p)
-            elif p == "ollama":
-                available.append(p)  # Always try Ollama as last resort
 
         # If preferred is available, move it to front
         if preferred in available:
@@ -342,29 +341,47 @@ class LLMService:
     def _call_nvidia(
         self, prompt: str, temperature: float, max_tokens: int
     ) -> Dict[str, Any]:
-        """Call NVIDIA API for premium LLM inference."""
+        """Call NVIDIA NIM API (integrate.api.nvidia.com) for LLM inference.
+
+        Uses the OpenAI-compatible endpoint with streaming disabled so the
+        response is returned as a single JSON object — identical wire format
+        to the OpenAI client snippet but handled via the stdlib HTTP stack
+        so we don't need the openai package as a dependency.
+        """
         if not self.nvidia_api_key:
             return {"error": "No NVIDIA API key configured"}
+
+        model = os.environ.get("NVIDIA_MODEL", "meta/llama-3.3-70b-instruct")
 
         data = self._post_json(
             "https://integrate.api.nvidia.com/v1/chat/completions",
             {
-                "model": "meta/llama3-70b-instruct",
+                "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": temperature,
+                "top_p": 1,
                 "max_tokens": max_tokens,
-                "top_p": 0.9,
+                "seed": 42,
+                "stream": False,
             },
-            timeout=60,
+            timeout=120,
             headers={"Authorization": f"Bearer {self.nvidia_api_key}"},
         )
         if not data:
             return {"error": "NVIDIA returned no response"}
-        content = data["choices"][0]["message"]["content"]
-        
+
+        choices = data.get("choices") or []
+        if not choices:
+            return {"error": "NVIDIA returned empty choices", "raw": data}
+
+        content = (choices[0].get("message") or {}).get("content", "")
+        if not content:
+            return {"error": "NVIDIA returned empty content", "raw": data}
+
         return {
             "response": content,
-            "stop_reason": data["choices"][0].get("finish_reason", "stop"),
+            "model": model,
+            "stop_reason": choices[0].get("finish_reason", "stop"),
             "usage": data.get("usage", {}),
         }
 

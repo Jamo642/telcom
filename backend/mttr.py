@@ -74,7 +74,7 @@ def get_mttr_report(
     node_name: Optional[str] = None,
     severity: Optional[str] = None,
     hours: int = 24,
-    db_path: str = "/data/telenoc.db",
+    db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db"),
 ) -> Dict[str, Any]:
     """
     Get MTTR report for a time window.
@@ -296,7 +296,7 @@ def _calculate_mttr_trend(
 
 def get_current_mttr(
     node_name: Optional[str] = None,
-    db_path: str = "/data/telenoc.db",
+    db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db"),
 ) -> Dict[str, Any]:
     """
     Get current MTTR summary (last 24 hours by default).

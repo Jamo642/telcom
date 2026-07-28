@@ -120,7 +120,7 @@ ChromaDB holds 50 documents: 40 telecom runbooks/past incidents and 10 MITRE FiG
 | Parameter | Value |
 |---|---|
 | Deploy command | `./deploy.sh` (one command) |
-| Cold start time | ~5–7 minutes |
+| Cold start time | ~3–4 minutes |
 | Warm start time | ~30 seconds |
 | RAM (default stack) | ~1.4 GB (backend 1 GB + Redis 256 MB + UI 128 MB) |
 | RAM (with OPEA) | ~8 GB additional |

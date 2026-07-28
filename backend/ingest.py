@@ -71,7 +71,7 @@ def _upload_file_to_dataprep(filepath: str, collection_name: str = "telecom_know
 
 def ingest_alarm_logs(
     filepath: str = DEFAULT_ALARMS_FILE,
-    db_path: str = "/data/telenoc.db",
+    db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db"),
     batch_size: int = 10,
 ) -> Dict[str, Any]:
     """
@@ -217,7 +217,7 @@ def ingest_documents_to_vector_db(
 
 def load_sample_alarms(
     filepath: str = DEFAULT_ALARMS_FILE,
-    db_path: str = "/data/telenoc.db",
+    db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db"),
 ) -> Dict[str, Any]:
     """
     Quick loader for sample alarm data.

@@ -16,7 +16,7 @@ cp .env.example .env
 That is the entire procedure. The script handles everything:
 - Docker prerequisite check
 - `.env` auto-creation if missing
-- Image build (~4–6 min cold, <1 min warm)
+- Image build (~2–3 min cold, <1 min warm)
 - Service startup (Redis → Backend → UI)
 - Sample alarm ingestion (50 alarms, runs in background)
 - MITRE FiGHT embedding into ChromaDB (auto-skipped if already done)
@@ -34,11 +34,11 @@ That is the entire procedure. The script handles everything:
 
 | Phase | Time |
 |---|---|
-| `docker pull python:3.10-slim` + `redis:7-alpine` + `nginx:alpine` | ~2–3 min |
-| `pip install` (requirements.txt) | ~2 min |
-| Embedding model download (`BAAI/bge-small-en-v1.5`, 130 MB, baked into image) | ~1 min |
+| `docker pull python:3.10-slim` + `redis:7-alpine` + `nginx:alpine` | ~1–2 min |
+| `pip install` (slim backend deps only — no streamlit/pandas/sklearn) | ~1 min |
+| Embedding model download (`BAAI/bge-small-en-v1.5`, 130 MB, baked into image) | ~45 s |
 | Backend startup + health check | ~20 s |
-| **Total cold** | **~5–7 min** |
+| **Total cold** | **~3–4 min** |
 | **Total warm (cached images)** | **~30 s** |
 
 No OPEA images are pulled by default — they are in `profile: [opea]` which is off unless explicitly activated.

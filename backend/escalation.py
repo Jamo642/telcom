@@ -48,7 +48,7 @@ P1_CONFIRMATION_WINDOW = 300  # 5 minutes
 
 def check_escalation(
     incident: Dict[str, Any],
-    db_path: str = "/data/telenoc.db",
+    db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db"),
 ) -> Dict[str, Any]:
     """
     Check if an incident needs escalation based on SLA timers and false-positive checks.
@@ -269,7 +269,7 @@ def _check_p1_confirmation(alarm_id: str, node_name: str, db_path: str) -> bool:
         return False  # Fail safe - don't auto-escalate if can't verify
 
 
-def get_escalation_queue(db_path: str = "/data/telenoc.db") -> List[Dict[str, Any]]:
+def get_escalation_queue(db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db")) -> List[Dict[str, Any]]:
     """
     Get the current escalation queue: all pending escalations sorted by urgency.
     
@@ -314,7 +314,7 @@ def get_escalation_queue(db_path: str = "/data/telenoc.db") -> List[Dict[str, An
         return []
 
 
-def get_escalation_summary(db_path: str = "/data/telenoc.db") -> Dict[str, Any]:
+def get_escalation_summary(db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db")) -> Dict[str, Any]:
     """
     Get a summary of the current escalation state for dashboard display.
     """

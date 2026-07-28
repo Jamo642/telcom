@@ -39,7 +39,7 @@ SEVERITY_WEIGHTS = {
 
 def detect_trends(
     alarms: List[Dict[str, Any]],
-    db_path: str = "/data/telenoc.db",
+    db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db"),
 ) -> Dict[str, Any]:
     """
     Detect degradation trends across all network nodes.
@@ -353,7 +353,7 @@ def _store_trend_data(
 
 
 def get_trend_summary(
-    db_path: str = "/data/telenoc.db",
+    db_path: str = os.environ.get("TELENOC_DB_PATH", "/data/telenoc.db"),
 ) -> Dict[str, Any]:
     """
     Get a summary of current degradation trends for dashboard display.

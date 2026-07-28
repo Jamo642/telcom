@@ -19,6 +19,9 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List
 from urllib import error, request
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -804,6 +807,56 @@ async def reject_action(approval_id: int, body: ApprovalDecisionRequest):
 
 
 # ─── Agent Chat Endpoint ─────────────────────────────────────────────────────
+
+# ─── Runtime Config Endpoint ─────────────────────────────────────────────────
+
+class ConfigRequest(BaseModel):
+    nvidia_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
+
+@app.post("/config")
+async def set_config(request: ConfigRequest):
+    """
+    Set API keys at runtime — no restart needed.
+    Judges can paste their key in the UI Settings tab instead of editing .env.
+    Keys are stored in os.environ for the lifetime of the process.
+    """
+    updated = []
+    if request.nvidia_api_key and request.nvidia_api_key.strip():
+        os.environ["NVIDIA_API_KEY"] = request.nvidia_api_key.strip()
+        os.environ["LLM_PROVIDER"] = "nvidia"
+        updated.append("NVIDIA_API_KEY")
+    if request.openrouter_api_key and request.openrouter_api_key.strip():
+        os.environ["OPENROUTER_API_KEY"] = request.openrouter_api_key.strip()
+        if "NVIDIA_API_KEY" not in updated:
+            os.environ["LLM_PROVIDER"] = "openrouter"
+        updated.append("OPENROUTER_API_KEY")
+    if request.groq_api_key and request.groq_api_key.strip():
+        os.environ["GROQ_API_KEY"] = request.groq_api_key.strip()
+        updated.append("GROQ_API_KEY")
+
+    if not updated:
+        raise HTTPException(status_code=400, detail="No keys provided")
+
+    logger.info("Runtime config updated: %s", updated)
+    return {
+        "status": "ok",
+        "updated": updated,
+        "active_provider": os.environ.get("LLM_PROVIDER", "none"),
+    }
+
+@app.get("/config")
+async def get_config():
+    """Return which provider is active (keys are masked)."""
+    return {
+        "active_provider": os.environ.get("LLM_PROVIDER", "none"),
+        "nvidia_key_set":      bool(os.environ.get("NVIDIA_API_KEY")),
+        "openrouter_key_set":  bool(os.environ.get("OPENROUTER_API_KEY")),
+        "groq_key_set":        bool(os.environ.get("GROQ_API_KEY")),
+        "nvidia_model":        os.environ.get("NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-70b-instruct"),
+    }
+
 
 @app.post("/agent/chat")
 async def agent_chat(request: AgentChatRequest):

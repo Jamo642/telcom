@@ -1,109 +1,110 @@
-# Deployment Guide
+# Deployment Guide — TeleNOC AI
 
-## Goal
-
-Provide a reliable one-click deployment for TeleNOC AI using real OPEA microservices on a single node.
-
-## One-Click Command
+## One-Command Deploy
 
 ```bash
-bash deploy.sh
+git clone https://github.com/Jamo642/telcom.git
+cd telcom
+cp .env.example .env
+# Edit .env — set at least one API key (OPENROUTER_API_KEY, NVIDIA_API_KEY, or GROQ_API_KEY)
+./deploy.sh
 ```
 
-This starts:
-- redis
-- embedding (opea/embedding-tei)
-- retriever (opea/retriever-redis)
-- dataprep (opea/dataprep)
-- chatqna (opea/chatqna)
-- ollama
-- backend
-- ui
+`deploy.sh` handles everything: Docker checks, `.env` auto-creation, image build, service startup (Redis → Backend → UI), sample alarm ingestion, and MITRE FiGHT ChromaDB embedding.
 
-## Challenge Constraint: 10-Minute Initial Run
+## Default Stack (no OPEA images pulled)
 
-Challenge rule requires installation and initial run to complete within 10 minutes on a clean environment.
+```
+redis:7-alpine          256 MB RAM
+backend (FastAPI)       1 GB RAM
+ui (nginx:alpine)       128 MB RAM
+```
 
-Deployment behavior:
-- warm run (images cached): normally fast and suitable for timed evaluation
-- cold run (fresh machine): may exceed 10 minutes due to large image pulls and network variability
+OPEA microservices (`embedding-tei`, `retriever-redis`, `dataprep`, `chatqna`) are **off by default** under `profile: opea`. The system uses its own local ChromaDB + sentence-transformers stack (`BAAI/bge-small-en-v1.5`, baked into the Docker image) — zero additional downloads at runtime.
 
-## Recommended Timed-Evaluation Procedure
+## Full OPEA Stack (optional)
 
-Use this two-step procedure for judges:
+```bash
+./deploy.sh --opea
+# or: COMPOSE_PROFILES=opea docker compose -f docker/docker-compose.yml up -d
+```
 
-1. Pre-pull once (before timed run)
+⚠ First run pulls ~8 GB of OPEA images — allow 10–20 min on a cold machine.
+
+## Timing
+
+| Scenario | Time |
+|---|---|
+| Cold (no cached images) | ~3–4 min |
+| Warm (images cached) | ~30 s |
+| With OPEA, cold | ~15–20 min |
+| With OPEA, warm | ~2–3 min |
+
+## Timed Evaluation Pre-Pull (optional)
+
+To ensure a clean timed run stays under 10 min, pre-pull the base images once:
 
 ```bash
 docker pull redis:7-alpine
 docker pull nginx:alpine
-docker pull ollama/ollama:latest
-docker pull opea/embedding-tei:latest
-docker pull opea/retriever-redis:latest
-docker pull opea/dataprep:latest
-docker pull opea/chatqna:latest
+docker pull python:3.10-slim
 ```
 
-2. Start timed run
-
-```bash
-bash deploy.sh
-```
+Do **not** pre-pull OPEA images unless you plan to run `--opea`.
 
 ## Health Verification
 
-After deployment:
-
 ```bash
+# Backend health
 curl http://localhost:8000/health
+# → {"status":"healthy","version":"2.0.0"}
+
+# OPEA service reachability (shows degraded when --opea not active — expected)
 curl http://localhost:8000/opea/health
 ```
 
-Expected:
-- /health returns backend healthy status
-- /opea/health returns per-service reachability for embedding, retriever, dataprep, chatqna
-
-## Fallback Behavior
-
-TeleNOC fallback logic:
-- preferred RAG path: OPEA chatqna
-- if OPEA path unavailable: fallback to direct LLM provider chain
-- provider chain: Groq -> NVIDIA -> HuggingFace -> Ollama
-
-Note: API keys must remain in .env only.
-
 ## Runtime Endpoints
 
-- Dashboard: http://localhost:8080
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-- OPEA Health: http://localhost:8000/opea/health
+| Endpoint | URL |
+|---|---|
+| Web UI | http://localhost:8080 |
+| REST API | http://localhost:8000 |
+| Swagger Docs | http://localhost:8000/docs |
+| OPEA Health | http://localhost:8000/opea/health |
 
-## Resource Profile
+## Fallback Behaviour
 
-Compose memory limits are configured to stay below challenge maximums and support a single-node run.
+| Tier | Provider | Condition |
+|---|---|---|
+| 1 | NVIDIA NIM (`NVIDIA_API_KEY`) | Preferred when key present |
+| 2 | OpenRouter (`OPENROUTER_API_KEY`) | Used when NVIDIA key absent |
+| 3 | Groq (`GROQ_API_KEY`) | Fallback |
+| 4 | Rule-based diagnosis | No API key at all |
+
+RAG path: OPEA `chatqna` (when `--opea`) → local ChromaDB + sentence-transformers.
 
 ## Troubleshooting
 
-### Pull errors (unexpected EOF, Docker 500)
-
-These are usually transient network/daemon issues during large pulls.
-
-Actions:
-1. retry docker pull for failed image
-2. restart Docker daemon if repeated 500 errors occur
-3. rerun bash deploy.sh
-
-### Service not healthy
-
+### Backend not healthy after 2 min
 ```bash
-docker compose -f docker/docker-compose.yml ps
-docker compose -f docker/docker-compose.yml logs --tail 100
+docker compose -f docker/docker-compose.yml logs backend --tail 50
 ```
 
 ### Clean restart
-
 ```bash
 docker compose -f docker/docker-compose.yml down -v
-bash deploy.sh
+./deploy.sh
+```
+
+### Pull errors (transient network issues)
+Retry the failing `docker pull` individually, restart the Docker daemon if needed, then rerun `./deploy.sh`.
+
+## Stop / Logs
+
+```bash
+# Stop all services
+docker compose -f docker/docker-compose.yml down
+
+# Stream backend logs
+docker compose -f docker/docker-compose.yml logs -f backend
 ```

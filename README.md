@@ -21,7 +21,7 @@ cp .env.example .env
 ./deploy.sh
 ```
 
-Open **http://localhost:8080** when the script completes (~5–7 min cold, ~30 s warm).
+Open **http://localhost:8080** when the script completes (~3–4 min cold, ~30 s warm).
 
 **With full OPEA microservice stack:**
 ```bash

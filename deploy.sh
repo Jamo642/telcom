@@ -75,20 +75,21 @@ if [ -f ".env" ]; then
     set +a
 fi
 
-# Check for AI provider key
-if [ -n "$OPENROUTER_API_KEY" ] && [ "$OPENROUTER_API_KEY" != "your_openrouter_api_key_here" ]; then
+# Check for AI provider key — NVIDIA first, then OpenRouter, then Groq
+if [ -n "$NVIDIA_API_KEY" ] && [ "$NVIDIA_API_KEY" != "your_nvidia_api_key_here" ]; then
+    echo -e "${GREEN}✅ NVIDIA API key found — using NVIDIA NIM as primary LLM${NC}"
+    export LLM_PROVIDER=nvidia
+elif [ -n "$OPENROUTER_API_KEY" ] && [ "$OPENROUTER_API_KEY" != "your_openrouter_api_key_here" ]; then
     echo -e "${GREEN}✅ OpenRouter API key found — using OpenRouter as primary LLM${NC}"
     export LLM_PROVIDER=openrouter
-elif [ -n "$GROQ_API_KEY" ]; then
+elif [ -n "$GROQ_API_KEY" ] && [ "$GROQ_API_KEY" != "your_groq_api_key_here" ]; then
     echo -e "${GREEN}✅ Groq API key found — using Groq as primary LLM${NC}"
     export LLM_PROVIDER=groq
-elif [ -n "$NVIDIA_API_KEY" ]; then
-    echo -e "${GREEN}✅ NVIDIA API key found — using NVIDIA as primary LLM${NC}"
-    export LLM_PROVIDER=nvidia
 else
-    echo -e "${YELLOW}⚠️  No API key found. Falling back to local Ollama (slower, needs ~4GB download).${NC}"
-    echo -e "${YELLOW}   Add OPENROUTER_API_KEY to .env for instant startup (free at openrouter.ai).${NC}"
-    export LLM_PROVIDER=ollama
+    echo -e "${YELLOW}⚠️  No API key in .env — app will start. Set key in the UI ⚙️ Settings tab.${NC}"
+    echo -e "${CYAN}   NVIDIA NIM (free):   https://build.nvidia.com  → paste key in Settings tab${NC}"
+    echo -e "${CYAN}   OpenRouter (free):   https://openrouter.ai     → paste key in Settings tab${NC}"
+    export LLM_PROVIDER=none
 fi
 echo ""
 
@@ -107,9 +108,6 @@ docker compose -f docker/docker-compose.yml build backend 2>&1 | grep -E "^#|Bui
 
 # Start services — include profiles as needed
 PROFILES=""
-if [ "$LLM_PROVIDER" = "ollama" ]; then
-    PROFILES="ollama"
-fi
 if [ "$ENABLE_OPEA" = "true" ]; then
     PROFILES="${PROFILES:+$PROFILES,}opea"
     echo -e "${BLUE}   OPEA mode: embedding-tei, retriever-redis, dataprep, chatqna will start${NC}"

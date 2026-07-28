@@ -194,6 +194,33 @@ def diagnose_alarm(
         result["needs_review"] = True
 
     # ═══════════════════════════════════════════════════════════════════
+    # STEP 2.5: MITRE FiGHT TTP Detection
+    # ═══════════════════════════════════════════════════════════════════
+
+    try:
+        from backend.fight_detector import enrich_with_fight
+        fight_result = enrich_with_fight(
+            alarm_text=alarm_text,
+            alarm_id=alarm_id,
+            current_severity=result["severity"],
+        )
+        result["fight_detection"] = fight_result
+
+        # Upgrade severity if FiGHT says so
+        if fight_result.get("suspicious") and fight_result.get("upgraded_severity"):
+            old_sev = result["severity"]
+            result["severity"] = fight_result["upgraded_severity"]
+            if result["severity"] != old_sev:
+                logger.info(
+                    "FiGHT severity upgrade: %s → %s (%s)",
+                    old_sev, result["severity"],
+                    fight_result["fight_analysis"]["fight_id"],
+                )
+    except Exception as e:
+        logger.warning(f"FiGHT detection failed for {alarm_id}: {e}")
+        result["fight_detection"] = {"suspicious": False, "fight_analysis": None}
+
+    # ═══════════════════════════════════════════════════════════════════
     # STEP 3: Start MTTR Timer
     # ═══════════════════════════════════════════════════════════════════
 

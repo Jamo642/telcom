@@ -23,6 +23,7 @@ services:
     image: opea/embedding-tei:latest
     container_name: embedding-telenoc
     profiles: ["opea"]
+    restart: unless-stopped
     mem_limit: 2g
     environment:
       - PORT=6000
@@ -42,6 +43,7 @@ services:
     image: opea/retriever-redis:latest
     container_name: retriever-telenoc
     profiles: ["opea"]
+    restart: unless-stopped
     mem_limit: 2g
     environment:
       - REDIS_URL=redis://redis:6379
@@ -69,6 +71,7 @@ services:
     image: opea/dataprep:latest
     container_name: dataprep-telenoc
     profiles: ["opea"]
+    restart: unless-stopped
     mem_limit: 2g
     environment:
       - PORT=6007
@@ -96,6 +99,7 @@ services:
     image: opea/chatqna:latest
     container_name: chatqna-telenoc
     profiles: ["opea"]
+    restart: unless-stopped
     mem_limit: 2g
     environment:
       - PORT=8888
@@ -129,6 +133,7 @@ services:
     image: ollama/ollama:latest
     container_name: ollama-telenoc
     profiles: ["ollama"]
+    restart: unless-stopped
     mem_limit: 4g
     ports:
       - "11434:11434"
@@ -156,14 +161,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - NVIDIA_MODEL=${NVIDIA_MODEL:-meta/llama-3.3-70b-instruct}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-meta-llama/llama-3.3-70b-instruct:free}
-      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - HF_API_KEY=${HF_API_KEY:-}
-      - LLM_PROVIDER=${LLM_PROVIDER:-openrouter}
-      - OLLAMA_HOST=http://ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama2}
+      - LLM_PROVIDER=${LLM_PROVIDER:-nvidia}
       - EMBEDDING_SERVICE_HOST=embedding
       - EMBEDDING_SERVICE_PORT=6000
       - RETRIEVER_SERVICE_HOST=retriever

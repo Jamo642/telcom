@@ -184,6 +184,7 @@
             <button onclick="switchTab('agent')">🤖 AI Agent</button>
             <button onclick="switchTab('fight')">🛡️ FiGHT</button>
             <button onclick="switchTab('escalations')">🔔 Escalations</button>
+            <button onclick="switchTab('settings')" id="settingsTabBtn">⚙️ Settings</button>
         </div>
 
         <!-- Diagnose Tab -->
@@ -317,10 +318,68 @@
                 </div>
             </div>
         </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content">
+            <div class="card" style="max-width:560px;margin:0 auto">
+                <div class="card-header">⚙️ API Key Configuration</div>
+                <div class="card-body">
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+                        Paste your API key below — no restart needed. The key is sent to the backend and stored for this session only.
+                    </p>
+
+                    <!-- Current status -->
+                    <div id="configStatus" style="background:#0f172a;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px">
+                        Loading…
+                    </div>
+
+                    <!-- NVIDIA (primary) -->
+                    <div style="margin-bottom:16px">
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">
+                            NVIDIA NIM API Key <span style="color:var(--accent-green)">(recommended — free at build.nvidia.com)</span>
+                        </label>
+                        <div style="display:flex;gap:8px">
+                            <input type="password" id="inputNvidiaKey" placeholder="nvapi-…"
+                                style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text-primary);font-size:13px;font-family:monospace">
+                            <button class="btn btn-primary" onclick="saveKey('nvidia')" style="white-space:nowrap">Save &amp; Use</button>
+                        </div>
+                    </div>
+
+                    <!-- OpenRouter (fallback) -->
+                    <div style="margin-bottom:16px;padding-top:12px;border-top:1px solid var(--border)">
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">
+                            OpenRouter API Key <span style="color:var(--text-secondary)">(fallback — free at openrouter.ai)</span>
+                        </label>
+                        <div style="display:flex;gap:8px">
+                            <input type="password" id="inputOpenrouterKey" placeholder="sk-or-…"
+                                style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text-primary);font-size:13px;font-family:monospace">
+                            <button class="btn btn-secondary" onclick="saveKey('openrouter')" style="white-space:nowrap">Save &amp; Use</button>
+                        </div>
+                    </div>
+
+                    <!-- Groq (fallback) -->
+                    <div style="margin-bottom:4px;padding-top:12px;border-top:1px solid var(--border)">
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">
+                            Groq API Key <span style="color:var(--text-secondary)">(fallback — free at console.groq.com)</span>
+                        </label>
+                        <div style="display:flex;gap:8px">
+                            <input type="password" id="inputGroqKey" placeholder="gsk_…"
+                                style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text-primary);font-size:13px;font-family:monospace">
+                            <button class="btn btn-secondary" onclick="saveKey('groq')" style="white-space:nowrap">Save &amp; Use</button>
+                        </div>
+                    </div>
+
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:16px">
+                        Keys are held only in process memory — never written to disk or logged.
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8000';
+        // Use the nginx proxy so the UI works from any machine — no hardcoded localhost
+        const API_BASE = '/api';
 
         // ─── Tab Switching ─────────────────────────────────────────────────
         function switchTab(name) {
@@ -975,10 +1034,72 @@
             return html;
         }
 
+        // ─── Settings / Config ────────────────────────────────────────────
+        async function loadConfigStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/config`);
+                const d = await res.json();
+                const providerColor = d.nvidia_key_set ? 'var(--accent-green)' : d.openrouter_key_set ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                document.getElementById('configStatus').innerHTML =
+                    `<div style="display:flex;flex-direction:column;gap:6px">
+                        <div>Active provider: <strong style="color:${providerColor}">${d.active_provider.toUpperCase()}</strong></div>
+                        <div style="font-size:12px;color:var(--text-secondary)">
+                            NVIDIA key: ${d.nvidia_key_set ? '<span style="color:var(--accent-green)">✓ set</span>' : '<span style="color:var(--accent-red)">✗ not set</span>'}
+                            &nbsp;|&nbsp;
+                            OpenRouter key: ${d.openrouter_key_set ? '<span style="color:var(--accent-green)">✓ set</span>' : '<span style="color:var(--accent-red)">✗ not set</span>'}
+                            &nbsp;|&nbsp;
+                            Groq key: ${d.groq_key_set ? '<span style="color:var(--accent-green)">✓ set</span>' : '<span style="color:var(--accent-red)">✗ not set</span>'}
+                        </div>
+                        <div style="font-size:12px;color:var(--text-secondary)">Model: ${d.nvidia_model}</div>
+                    </div>`;
+                // Flash the settings tab button red if no key is configured
+                const btn = document.getElementById('settingsTabBtn');
+                if (!d.nvidia_key_set && !d.openrouter_key_set && !d.groq_key_set) {
+                    btn.style.color = 'var(--accent-red)';
+                    btn.textContent = '⚙️ Settings ← set key';
+                } else {
+                    btn.style.color = '';
+                    btn.textContent = '⚙️ Settings';
+                }
+            } catch(e) {
+                document.getElementById('configStatus').innerHTML = `<span style="color:var(--accent-red)">Could not reach backend: ${escHtml(e.message)}</span>`;
+            }
+        }
+
+        async function saveKey(provider) {
+            const keyMap = { nvidia: 'inputNvidiaKey', openrouter: 'inputOpenrouterKey', groq: 'inputGroqKey' };
+            const val = document.getElementById(keyMap[provider]).value.trim();
+            if (!val) { showToast('Paste a key first', 'error'); return; }
+
+            const body = {};
+            if (provider === 'nvidia')      body.nvidia_api_key      = val;
+            if (provider === 'openrouter')  body.openrouter_api_key  = val;
+            if (provider === 'groq')        body.groq_api_key        = val;
+
+            try {
+                const res = await fetch(`${API_BASE}/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const d = await res.json();
+                if (res.ok) {
+                    showToast(`${provider.toUpperCase()} key saved — provider: ${d.active_provider}`, 'success');
+                    document.getElementById(keyMap[provider]).value = '';
+                    await loadConfigStatus();
+                } else {
+                    showToast('Error: ' + (d.detail || JSON.stringify(d)), 'error');
+                }
+            } catch(e) {
+                showToast('Request failed: ' + e.message, 'error');
+            }
+        }
+
         // ─── Init ─────────────────────────────────────────────────────────
         async function init() {
             await checkHealth();
             await loadDashboardStats();
+            await loadConfigStatus();
             // Auto-refresh every 30 seconds
             setInterval(async () => {
                 await checkHealth();
