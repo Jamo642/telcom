@@ -55,8 +55,8 @@ Backend tools:
   ├── explain_fight_technique → ChromaDB RAG + LLM
   └── remediate_fight_technique → gated (confirmed=true required)
 
-LLM: OpenRouter free tier (nvidia/nemotron-3-ultra-550b-a55b:free)
-     Fallback chain: llama-3.3-70b → nemotron-super → qwen3-coder → llama-3.2-3b
+LLM: OpenRouter free tier (nvidia/nemotron-3-super-120b-a12b:free, ~1.5s)
+     Fallback chain: nemotron-ultra → gemma-4-31b → nemotron-nano
 ```
 
 ## UI Tabs
@@ -79,7 +79,7 @@ Key variables in `.env`:
 | Variable | Description |
 |---|---|
 | `OPENROUTER_API_KEY` | **Required.** Free key from https://openrouter.ai |
-| `OPENROUTER_MODEL` | Default: `nvidia/nemotron-3-ultra-550b-a55b:free` |
+| `OPENROUTER_MODEL` | Default: `nvidia/nemotron-3-super-120b-a12b:free` (fast, ~1.5s) |
 
 ## OPEA Integration
 

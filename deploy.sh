@@ -13,6 +13,14 @@
 
 set -e
 
+# ─── Docker socket discovery (Docker Desktop on Linux) ───────────────
+if [ -z "$DOCKER_HOST" ] && [ ! -S /var/run/docker.sock ]; then
+    DESKTOP_SOCK="$HOME/.docker/desktop/docker.sock"
+    if [ -S "$DESKTOP_SOCK" ]; then
+        export DOCKER_HOST="unix://$DESKTOP_SOCK"
+    fi
+fi
+
 # ─── Parse flags ─────────────────────────────────────────────────────
 ENABLE_OPEA=false
 for arg in "$@"; do

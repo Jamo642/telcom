@@ -82,8 +82,8 @@ open http://localhost:8080   # or visit in browser
 
 ## AI Provider
 
-Default: **OpenRouter free tier** (`nvidia/nemotron-3-ultra-550b-a55b:free`)  
-Fallback chain: `llama-3.3-70b:free` → `nemotron-super:free` → `qwen3-coder:free` → `llama-3.2-3b:free`
+Default: **OpenRouter free tier** (`nvidia/nemotron-3-super-120b-a12b:free`, ~1.5 s response)
+Fallback chain: `nemotron-ultra:free` → `gemma-4-31b:free` → `nemotron-nano:free`
 
 No Ollama, no GPU, no HuggingFace download needed. A free OpenRouter key is sufficient.
 

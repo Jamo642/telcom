@@ -48,8 +48,8 @@ TeleNOC AI replaces passive dashboards with an **autonomous, tool-using AI agent
                       └───────────────────────────────┘
 ```
 
-**LLM:** OpenRouter free tier (`nvidia/nemotron-3-ultra-550b-a55b:free`)  
-Fallback chain: `llama-3.3-70b:free` → `nemotron-super:free` → `qwen3-coder:free` → `llama-3.2-3b:free`
+**LLM:** OpenRouter free tier (`nvidia/nemotron-3-super-120b-a12b:free`, ~1.5 s response)
+Fallback chain: `nemotron-ultra:free` → `gemma-4-31b:free` → `nemotron-nano:free`
 
 ---
 
