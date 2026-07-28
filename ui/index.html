@@ -3,204 +3,497 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TeleNOC AI - NOC Dashboard</title>
+    <title>TeleNOC AI — NOC Operations Dashboard</title>
     <style>
+        /* ── Design tokens ─────────────────────────────────────────────── */
         :root {
-            --bg-dark: #0a0e17;
-            --bg-card: #111827;
-            --bg-card-hover: #1a2332;
-            --border: #1e293b;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --accent-blue: #3b82f6;
-            --accent-green: #22c55e;
-            --accent-yellow: #eab308;
-            --accent-red: #ef4444;
-            --accent-orange: #f97316;
-            --p1-color: #ef4444;
-            --p2-color: #f97316;
-            --p3-color: #eab308;
-            --p4-color: #22c55e;
+            --bg:          #0b0f1a;
+            --bg-nav:      #0d1120;
+            --bg-card:     #111827;
+            --bg-input:    #0f1623;
+            --bg-hover:    #161f30;
+            --border:      #1e2d45;
+            --border-soft: #1a2540;
+            --text:        #e2e8f0;
+            --text-muted:  #64748b;
+            --text-dim:    #94a3b8;
+            --blue:        #3b82f6;
+            --blue-dark:   #1d4ed8;
+            --green:       #10b981;
+            --yellow:      #f59e0b;
+            --red:         #ef4444;
+            --orange:      #f97316;
+            --purple:      #8b5cf6;
+            --cyan:        #06b6d4;
+            --p1:          #ef4444;
+            --p2:          #f97316;
+            --p3:          #f59e0b;
+            --p4:          #10b981;
+            --radius:      10px;
+            --radius-sm:   6px;
+            --shadow:      0 4px 24px rgba(0,0,0,0.4);
+            --shadow-sm:   0 2px 8px rgba(0,0,0,0.3);
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 14px; }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 16px; }
-        .header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+
+        /* ── Top nav bar ───────────────────────────────────────────────── */
+        .topbar {
+            background: var(--bg-nav);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
         }
-        .header h1 {
-            font-size: 24px; font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-blue), #8b5cf6);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        .topbar-left { display: flex; align-items: center; gap: 14px; }
+        .logo-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
         }
-        .header-status { display: flex; align-items: center; gap: 12px; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .status-dot.online { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
-        .status-dot.offline { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
-        .stats-row {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px; margin-bottom: 24px;
+        .logo-text { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+        .logo-text span { color: var(--blue); }
+        .logo-badge {
+            font-size: 10px; font-weight: 600; background: rgba(59,130,246,0.15);
+            color: var(--blue); padding: 2px 7px; border-radius: 20px;
+            border: 1px solid rgba(59,130,246,0.25); letter-spacing: 0.4px;
+            text-transform: uppercase;
         }
-        .stat-card {
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 12px; padding: 16px; transition: all 0.2s;
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .status-pill {
+            display: flex; align-items: center; gap: 7px;
+            font-size: 12px; color: var(--text-dim);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            padding: 4px 11px; border-radius: 20px;
         }
-        .stat-card:hover { background: var(--bg-card-hover); transform: translateY(-1px); }
-        .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
-        .stat-value.green { color: var(--accent-green); }
-        .stat-value.red { color: var(--accent-red); }
-        .stat-value.yellow { color: var(--accent-yellow); }
-        .stat-value.blue { color: var(--accent-blue); }
-        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-        @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } }
+        .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .dot-red   { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+        .dot-pulse { animation: dotpulse 2s ease-in-out infinite; }
+        @keyframes dotpulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .topbar-time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+        /* ── KPI strip ─────────────────────────────────────────────────── */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+        .kpi {
+            background: var(--bg-nav);
+            padding: 14px 20px;
+            display: flex; align-items: center; gap: 14px;
+        }
+        .kpi-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px; flex-shrink: 0;
+        }
+        .kpi-icon.blue   { background: rgba(59,130,246,0.12); }
+        .kpi-icon.red    { background: rgba(239,68,68,0.12); }
+        .kpi-icon.yellow { background: rgba(245,158,11,0.12); }
+        .kpi-icon.green  { background: rgba(16,185,129,0.12); }
+        .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+        .kpi-value { font-size: 22px; font-weight: 700; line-height: 1; }
+        .kpi-value.blue   { color: var(--blue); }
+        .kpi-value.red    { color: var(--red); }
+        .kpi-value.yellow { color: var(--yellow); }
+        .kpi-value.green  { color: var(--green); }
+
+        /* ── Layout shell ──────────────────────────────────────────────── */
+        .shell { display: flex; flex: 1; min-height: 0; }
+
+        /* ── Sidebar nav ───────────────────────────────────────────────── */
+        .sidebar {
+            width: 210px; flex-shrink: 0;
+            background: var(--bg-nav);
+            border-right: 1px solid var(--border);
+            padding: 16px 10px;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .nav-section {
+            font-size: 10px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.8px;
+            padding: 10px 10px 4px;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 500; color: var(--text-dim);
+            cursor: pointer; border: none; background: transparent;
+            width: 100%; text-align: left; transition: all 0.15s;
+        }
+        .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+        .nav-item.active {
+            background: rgba(59,130,246,0.12);
+            color: var(--blue);
+            border: 1px solid rgba(59,130,246,0.18);
+        }
+        .nav-item .nav-icon { font-size: 15px; flex-shrink: 0; width: 20px; text-align: center; }
+        .nav-badge {
+            margin-left: auto; background: var(--red);
+            color: #fff; font-size: 10px; font-weight: 700;
+            padding: 1px 6px; border-radius: 20px;
+        }
+
+        /* ── Main content ──────────────────────────────────────────────── */
+        .main { flex: 1; overflow-y: auto; padding: 24px; min-width: 0; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .page-title {
+            font-size: 17px; font-weight: 700; margin-bottom: 18px;
+            display: flex; align-items: center; gap: 9px;
+        }
+        .page-title .icon { font-size: 18px; }
+
+        /* ── Cards ─────────────────────────────────────────────────────── */
         .card {
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 12px; overflow: hidden;
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
         }
         .card-header {
-            padding: 14px 16px; border-bottom: 1px solid var(--border);
-            font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--border-soft);
+            font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; background: rgba(255,255,255,0.02);
         }
-        .card-body { padding: 16px; max-height: 400px; overflow-y: auto; }
-        .card-body::-webkit-scrollbar { width: 4px; }
-        .card-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-        .alarm-form { display: flex; flex-direction: column; gap: 12px; }
-        .alarm-form textarea, .alarm-form input, .alarm-form select {
-            background: #1a2332; border: 1px solid var(--border); border-radius: 8px;
-            padding: 10px 12px; color: var(--text-primary); font-size: 14px;
-            font-family: inherit; transition: border-color 0.2s;
+        .card-header-left { display: flex; align-items: center; gap: 8px; }
+        .card-body { padding: 16px; }
+        .card-scroll { max-height: 440px; overflow-y: auto; }
+        .card-scroll::-webkit-scrollbar { width: 4px; }
+        .card-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 1100px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ── Form controls ─────────────────────────────────────────────── */
+        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+        .form-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], input[type="password"], select, textarea {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 9px 12px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            width: 100%;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            outline: none;
         }
-        .alarm-form textarea:focus, .alarm-form input:focus, .alarm-form select:focus {
-            outline: none; border-color: var(--accent-blue);
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
         }
-        .alarm-form textarea { min-height: 80px; resize: vertical; }
-        .alarm-form .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+        select option { background: #1a2332; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        /* ── Buttons ───────────────────────────────────────────────────── */
         .btn {
-            padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px;
-            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border: none; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s; white-space: nowrap; line-height: 1.4;
         }
-        .btn-primary { background: var(--accent-blue); color: white; }
+        .btn-primary {
+            background: var(--blue); color: #fff;
+            box-shadow: 0 1px 4px rgba(59,130,246,0.3);
+        }
         .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .btn-secondary { background: #1e293b; color: var(--text-primary); }
-        .btn-secondary:hover { background: #334155; }
-        .severity-badge {
-            display: inline-block; padding: 3px 10px; border-radius: 20px;
-            font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+        .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+        .btn-success { background: #059669; color: #fff; }
+        .btn-success:hover { background: #047857; }
+        .btn-ghost {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
         }
-        .severity-P1 { background: rgba(239,68,68,0.2); color: var(--p1-color); }
-        .severity-P2 { background: rgba(249,115,22,0.2); color: var(--p2-color); }
-        .severity-P3 { background: rgba(234,179,8,0.2); color: var(--p3-color); }
-        .severity-P4 { background: rgba(34,197,94,0.2); color: var(--p4-color); }
-        .incident-item {
-            padding: 12px; border-radius: 8px; background: #0f172a;
-            margin-bottom: 8px; border-left: 3px solid var(--border); transition: all 0.2s;
+        .btn-ghost:hover { background: var(--bg-hover); color: var(--text); }
+        .btn-sm { padding: 5px 11px; font-size: 12px; }
+        .btn-xs { padding: 3px 9px; font-size: 11px; }
+
+        /* ── Severity badges ───────────────────────────────────────────── */
+        .badge {
+            display: inline-flex; align-items: center;
+            padding: 2px 9px; border-radius: 20px;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
         }
-        .incident-item:hover { background: #1a2332; }
-        .incident-item.p1-border { border-left-color: var(--p1-color); }
-        .incident-item.p2-border { border-left-color: var(--p2-color); }
-        .incident-item.p3-border { border-left-color: var(--p3-color); }
-        .incident-item.p4-border { border-left-color: var(--p4-color); }
-        .incident-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .incident-id { font-weight: 600; font-size: 13px; }
-        .incident-node { color: var(--text-secondary); font-size: 12px; }
-        .incident-text { font-size: 13px; color: var(--text-secondary); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .incident-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--text-secondary); }
-        .escalation-item {
-            padding: 10px; border-radius: 8px; background: #0f172a;
-            margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+        .badge-P1 { background: rgba(239,68,68,0.15); color: var(--p1); border: 1px solid rgba(239,68,68,0.25); }
+        .badge-P2 { background: rgba(249,115,22,0.15); color: var(--p2); border: 1px solid rgba(249,115,22,0.25); }
+        .badge-P3 { background: rgba(245,158,11,0.15); color: var(--p3); border: 1px solid rgba(245,158,11,0.25); }
+        .badge-P4 { background: rgba(16,185,129,0.15); color: var(--p4); border: 1px solid rgba(16,185,129,0.25); }
+        .badge-info { background: rgba(59,130,246,0.12); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+        .badge-warn { background: rgba(245,158,11,0.12); color: var(--yellow); border: 1px solid rgba(245,158,11,0.2); }
+
+        /* ── Incident rows ─────────────────────────────────────────────── */
+        .incident-row {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 11px 12px; border-radius: var(--radius-sm);
+            border-left: 3px solid transparent;
+            background: var(--bg-input);
+            margin-bottom: 6px; transition: background 0.12s;
         }
-        .escalation-overdue { border-left: 3px solid var(--accent-red); }
-        .escalation-pending { border-left: 3px solid var(--accent-yellow); }
-        .trend-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-        .trend-critical { background: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
-        .trend-warning { background: var(--accent-yellow); box-shadow: 0 0 6px var(--accent-yellow); }
-        .trend-healthy { background: var(--accent-green); }
-        .result-card {
-            background: #0f172a; border: 1px solid var(--border); border-radius: 8px;
-            padding: 16px; margin-top: 12px;
+        .incident-row:hover { background: var(--bg-hover); }
+        .incident-row.p1 { border-left-color: var(--p1); }
+        .incident-row.p2 { border-left-color: var(--p2); }
+        .incident-row.p3 { border-left-color: var(--p3); }
+        .incident-row.p4 { border-left-color: var(--p4); }
+        .incident-main { flex: 1; min-width: 0; }
+        .incident-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+        .incident-id { font-size: 12px; font-weight: 700; color: var(--blue); }
+        .incident-name { font-size: 13px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .incident-node { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+        .incident-text { font-size: 12px; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .incident-meta { display: flex; gap: 10px; margin-top: 5px; font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
+
+        /* ── Result card ───────────────────────────────────────────────── */
+        .result-panel {
+            margin-top: 14px; background: var(--bg-input);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius); padding: 16px;
         }
-        .result-card h3 { font-size: 14px; margin-bottom: 8px; color: var(--accent-blue); }
-        .result-card pre {
-            background: #0a0e17; padding: 12px; border-radius: 6px;
-            font-size: 12px; overflow-x: auto; color: var(--text-primary);
+        .result-panel-title {
+            font-size: 13px; font-weight: 700; color: var(--blue);
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
         }
-        .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-        .filter-row select, .filter-row input {
-            background: #1a2332; border: 1px solid var(--border); border-radius: 6px;
-            padding: 6px 10px; color: var(--text-primary); font-size: 12px;
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .result-field { background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); padding: 8px 10px; }
+        .result-field-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .result-field-value { font-size: 13px; color: var(--text); }
+        .divider { border: none; border-top: 1px solid var(--border-soft); margin: 12px 0; }
+
+        /* ── Chat ──────────────────────────────────────────────────────── */
+        .chat-wrap { display: flex; flex-direction: column; height: 560px; }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 14px;
         }
-        .loading { animation: pulse 1.5s ease-in-out infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .chat-empty {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; color: var(--text-muted); gap: 8px; padding: 32px;
+            text-align: center;
+        }
+        .chat-empty .ce-icon { font-size: 32px; margin-bottom: 4px; }
+        .chat-empty p { font-size: 13px; line-height: 1.6; }
+        .msg-user {
+            align-self: flex-end; max-width: 76%;
+            background: linear-gradient(135deg, #1e3a6e, #1d2f58);
+            border: 1px solid rgba(59,130,246,0.2);
+            border-radius: 14px 14px 3px 14px;
+            padding: 10px 14px; font-size: 13px; line-height: 1.55;
+        }
+        .msg-agent {
+            align-self: flex-start; max-width: 88%;
+            background: var(--bg-hover);
+            border: 1px solid var(--border-soft);
+            border-radius: 3px 14px 14px 14px;
+            padding: 12px 15px; font-size: 13px; line-height: 1.55;
+        }
+        .msg-meta { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+        .chat-footer {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .chat-input-row { display: flex; gap: 8px; }
+        .chat-input-row textarea {
+            flex: 1; min-height: 42px; max-height: 120px;
+            resize: none; padding: 9px 12px; font-size: 13px;
+        }
+        .quick-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .quick-label { font-size: 11px; color: var(--text-muted); }
+
+        /* ── FiGHT findings ────────────────────────────────────────────── */
+        .finding-card {
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            padding: 13px; margin-bottom: 10px;
+            background: var(--bg-input);
+        }
+        .finding-card.high { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.05); }
+        .finding-card.medium { border-color: rgba(249,115,22,0.35); background: rgba(249,115,22,0.04); }
+        .finding-card.low { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.04); }
+        .finding-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+        .finding-title.high   { color: var(--red); }
+        .finding-title.medium { color: var(--orange); }
+        .finding-title.low    { color: var(--yellow); }
+        .finding-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+        .finding-indicators { font-size: 12px; margin: 6px 0; }
+        .finding-indicators li { margin-left: 16px; margin-bottom: 2px; color: var(--text-dim); }
+
+        /* ── Approval card ─────────────────────────────────────────────── */
+        .approval-card {
+            border: 1px solid rgba(249,115,22,0.4);
+            border-radius: var(--radius-sm);
+            padding: 13px; margin-top: 10px;
+            background: rgba(249,115,22,0.06);
+        }
+        .approval-title { font-weight: 700; color: var(--orange); font-size: 13px; margin-bottom: 6px; }
+        .approval-action { font-size: 12px; color: var(--text); margin-bottom: 8px; line-height: 1.5; }
+        .approval-target { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+        .approval-btns { display: flex; gap: 8px; }
+
+        /* ── Escalation rows ───────────────────────────────────────────── */
+        .esc-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 12px; border-radius: var(--radius-sm);
+            background: var(--bg-input); margin-bottom: 6px;
+            border-left: 3px solid var(--border);
+        }
+        .esc-row.overdue { border-left-color: var(--red); }
+        .esc-row.pending { border-left-color: var(--yellow); }
+        .esc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ── Settings ──────────────────────────────────────────────────── */
+        .config-status {
+            background: var(--bg-input); border: 1px solid var(--border-soft);
+            border-radius: var(--radius-sm); padding: 12px 14px;
+            font-size: 13px; margin-bottom: 16px;
+        }
+        .key-section { padding-top: 14px; border-top: 1px solid var(--border-soft); margin-top: 14px; }
+        .key-row { display: flex; gap: 8px; margin-top: 6px; }
+
+        /* ── Toasts ────────────────────────────────────────────────────── */
         .toast {
-            position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
-            border-radius: 8px; font-size: 13px; z-index: 1000;
-            animation: slideIn 0.3s ease-out;
+            position: fixed; bottom: 24px; right: 24px;
+            padding: 11px 18px; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 500; z-index: 9999;
+            box-shadow: var(--shadow); animation: toastIn 0.2s ease-out;
+            display: flex; align-items: center; gap: 8px;
         }
-        .toast.success { background: #166534; border: 1px solid var(--accent-green); }
-        .toast.error { background: #7f1d1d; border: 1px solid var(--accent-red); }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .tab-bar { display: flex; gap: 4px; background: #1a2332; padding: 4px; border-radius: 8px; margin-bottom: 16px; }
-        .tab-bar button {
-            flex: 1; padding: 8px 16px; border: none; border-radius: 6px;
-            background: transparent; color: var(--text-secondary); font-size: 13px;
-            font-weight: 500; cursor: pointer; transition: all 0.2s;
-        }
-        .tab-bar button.active { background: var(--bg-card); color: var(--text-primary); }
-        .tab-bar button:hover:not(.active) { background: rgba(255,255,255,0.05); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .toast.success { background: #064e3b; border: 1px solid var(--green); color: #6ee7b7; }
+        .toast.error   { background: #450a0a; border: 1px solid var(--red);   color: #fca5a5; }
+        @keyframes toastIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* ── Misc helpers ──────────────────────────────────────────────── */
+        .loading { animation: pulse 1.4s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+        .spinner { display: inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.2); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .empty-state { text-align: center; padding: 36px 20px; color: var(--text-muted); font-size: 13px; }
+        .empty-state .es-icon { font-size: 28px; margin-bottom: 8px; }
+        details summary { cursor: pointer; font-size: 11px; color: var(--text-muted); user-select: none; }
+        details summary:hover { color: var(--text-dim); }
+        details[open] summary { margin-bottom: 8px; }
+        code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-size: 12px; font-family: 'Consolas','SF Mono',monospace; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>📡 TeleNOC AI</h1>
-            <div class="header-status">
-                <span id="statusText" style="font-size:13px;color:var(--text-secondary)">Connecting...</span>
-                <span id="statusDot" class="status-dot offline"></span>
-            </div>
-        </div>
 
-        <!-- Stats Row -->
-        <div class="stats-row" id="statsRow">
-            <div class="stat-card"><div class="stat-label">Open Incidents</div><div class="stat-value blue" id="statOpenIncidents">-</div></div>
-            <div class="stat-card"><div class="stat-label">P1 Critical</div><div class="stat-value red" id="statP1Count">-</div></div>
-            <div class="stat-card"><div class="stat-label">Mean MTTR</div><div class="stat-value yellow" id="statMTTR">-</div></div>
-            <div class="stat-card"><div class="stat-label">System Status</div><div class="stat-value green" id="statStatus">-</div></div>
+<!-- ── Top navigation bar ─────────────────────────────────────────────── -->
+<div class="topbar">
+    <div class="topbar-left">
+        <div class="logo-icon">📡</div>
+        <span class="logo-text">Tele<span>NOC</span> AI</span>
+        <span class="logo-badge">v2.0</span>
+    </div>
+    <div class="topbar-right">
+        <span class="topbar-time" id="clockEl">--:--:--</span>
+        <div class="status-pill">
+            <span class="dot dot-red" id="statusDot"></span>
+            <span id="statusText">Connecting…</span>
         </div>
+    </div>
+</div>
 
-        <!-- Tab Bar -->
-        <div class="tab-bar">
-            <button class="active" onclick="switchTab('diagnose')">🔍 Diagnose</button>
-            <button onclick="switchTab('agent')">🤖 AI Agent</button>
-            <button onclick="switchTab('fight')">🛡️ FiGHT</button>
-            <button onclick="switchTab('escalations')">🔔 Escalations</button>
-            <button onclick="switchTab('settings')" id="settingsTabBtn">⚙️ Settings</button>
-        </div>
+<!-- ── KPI strip ──────────────────────────────────────────────────────── -->
+<div class="kpi-strip">
+    <div class="kpi">
+        <div class="kpi-icon blue">🚨</div>
+        <div><div class="kpi-label">Open Incidents</div><div class="kpi-value blue" id="statOpenIncidents">—</div></div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-icon red">🔴</div>
+        <div><div class="kpi-label">P1 Critical</div><div class="kpi-value red" id="statP1Count">—</div></div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-icon yellow">⏱</div>
+        <div><div class="kpi-label">Mean MTTR</div><div class="kpi-value yellow" id="statMTTR">—</div></div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-icon green">✅</div>
+        <div><div class="kpi-label">System Status</div><div class="kpi-value green" id="statStatus">—</div></div>
+    </div>
+</div>
 
-        <!-- Diagnose Tab -->
-        <div id="tab-diagnose" class="tab-content active">
-            <div class="main-grid">
-                <!-- Diagnosis Form -->
+<!-- ── Main shell ──────────────────────────────────────────────────────── -->
+<div class="shell">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="nav-section">Operations</div>
+        <button class="nav-item active" onclick="switchTab('diagnose')" id="nav-diagnose">
+            <span class="nav-icon">🔍</span> Diagnose
+        </button>
+        <button class="nav-item" onclick="switchTab('agent')" id="nav-agent">
+            <span class="nav-icon">🤖</span> AI Agent
+        </button>
+        <button class="nav-item" onclick="switchTab('fight')" id="nav-fight">
+            <span class="nav-icon">🛡️</span> FiGHT
+        </button>
+        <div class="nav-section">Monitoring</div>
+        <button class="nav-item" onclick="switchTab('escalations')" id="nav-escalations">
+            <span class="nav-icon">🔔</span> Escalations
+        </button>
+        <div class="nav-section">System</div>
+        <button class="nav-item" onclick="switchTab('settings')" id="nav-settings">
+            <span class="nav-icon">⚙️</span> <span id="settingsTabBtn">Settings</span>
+        </button>
+    </nav>
+
+    <!-- Content -->
+    <main class="main">
+
+        <!-- ── Diagnose ──────────────────────────────────────────────── -->
+        <div id="tab-diagnose" class="page active">
+            <div class="page-title"><span class="icon">🔍</span> Alarm Diagnosis</div>
+            <div class="two-col">
                 <div class="card">
-                    <div class="card-header">🔍 Diagnose Alarm</div>
+                    <div class="card-header">
+                        <div class="card-header-left">Submit Alarm</div>
+                        <button class="btn btn-ghost btn-sm" onclick="loadSampleAlarm()">Load Sample</button>
+                    </div>
                     <div class="card-body">
-                        <div class="alarm-form">
-                            <div class="input-row">
-                                <input type="text" id="alarmId" placeholder="Alarm ID (e.g. ALM-001)" value="ALM-001">
-                                <input type="text" id="nodeName" placeholder="Node Name (e.g. Router-KNB-04)" value="Router-KNB-04">
+                        <div class="input-row" style="margin-bottom:10px">
+                            <div class="form-group" style="margin:0">
+                                <label class="form-label">Alarm ID</label>
+                                <input type="text" id="alarmId" placeholder="e.g. ALM-001" value="ALM-001">
                             </div>
-                            <div class="input-row">
-                                <input type="text" id="alarmName" placeholder="Alarm Name (e.g. BGP Session Down)" value="BGP Session Dropped">
+                            <div class="form-group" style="margin:0">
+                                <label class="form-label">Node Name</label>
+                                <input type="text" id="nodeName" placeholder="e.g. Router-KNB-04" value="Router-KNB-04">
+                            </div>
+                        </div>
+                        <div class="input-row" style="margin-bottom:10px">
+                            <div class="form-group" style="margin:0">
+                                <label class="form-label">Alarm Name</label>
+                                <input type="text" id="alarmName" placeholder="e.g. BGP Session Down" value="BGP Session Dropped">
+                            </div>
+                            <div class="form-group" style="margin:0">
+                                <label class="form-label">Type</label>
                                 <select id="alarmType">
                                     <option value="bgp">BGP</option>
                                     <option value="packet_loss">Packet Loss</option>
@@ -210,904 +503,809 @@
                                     <option value="memory">Memory</option>
                                     <option value="dns">DNS</option>
                                     <option value="link">Link</option>
+                                    <option value="security">Security</option>
                                 </select>
                             </div>
-                            <textarea id="alarmText" placeholder="Alarm description...">BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 is down. Route prefix count dropped from 500K to 0.</textarea>
-                            <div style="display:flex;gap:8px">
-                                <button class="btn btn-primary" onclick="diagnoseAlarm()" id="diagnoseBtn">🚀 Diagnose</button>
-                                <button class="btn btn-secondary" onclick="loadSampleAlarm()">📥 Load Sample</button>
-                                <button class="btn btn-secondary" onclick="clearResult()">🗑 Clear</button>
-                            </div>
-                            <div id="resultContainer"></div>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea id="alarmText" rows="4">BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 is down. Route prefix count dropped from 500K to 0.</textarea>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <button class="btn btn-primary" onclick="diagnoseAlarm()" id="diagnoseBtn">
+                                <span>🚀</span> Diagnose
+                            </button>
+                            <button class="btn btn-ghost" onclick="clearResult()">Clear</button>
+                        </div>
+                        <div id="resultContainer"></div>
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
-                <div class="card">
-                    <div class="card-header">⚡ Quick Actions</div>
-                    <div class="card-body">
-                        <div style="display:flex;flex-direction:column;gap:8px">
-                            <button class="btn btn-secondary" onclick="ingestAllAlarms()">📥 Ingest All 50 Sample Alarms</button>
-                            <button class="btn btn-secondary" onclick="refreshDashboard()">🔄 Refresh Dashboard</button>
-                            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-                                <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Upload Your Own Alarm Logs (.json / .jsonl / .csv)</label>
-                                <input type="file" id="logFileInput" accept=".json,.jsonl,.csv,.txt" style="margin-bottom:8px;width:100%;font-size:12px">
-                                <button class="btn btn-secondary" onclick="uploadAlarmLogs()">📤 Upload &amp; Diagnose</button>
+                <div style="display:flex;flex-direction:column;gap:16px">
+                    <div class="card">
+                        <div class="card-header"><div class="card-header-left">⚡ Quick Actions</div></div>
+                        <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+                            <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="ingestAllAlarms()">📥 Ingest 50 Sample Alarms</button>
+                            <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="refreshDashboard()">🔄 Refresh Dashboard</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-header-left">📤 Upload Alarm Logs</div></div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">File (.json / .jsonl / .csv)</label>
+                                <input type="file" id="logFileInput" accept=".json,.jsonl,.csv,.txt" style="font-size:12px;padding:7px">
                             </div>
-                            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-                                <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Maintenance Window</label>
-                                <div class="input-row" style="margin-bottom:8px">
+                            <button class="btn btn-ghost btn-sm" onclick="uploadAlarmLogs()">Upload &amp; Diagnose</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-header-left">🔧 Maintenance Window</div></div>
+                        <div class="card-body">
+                            <div class="input-row" style="margin-bottom:10px">
+                                <div class="form-group" style="margin:0">
+                                    <label class="form-label">Node</label>
                                     <input type="text" id="maintNode" placeholder="Node name" value="Router-NBO-03">
+                                </div>
+                                <div class="form-group" style="margin:0">
+                                    <label class="form-label">Reason</label>
                                     <input type="text" id="maintReason" placeholder="Reason" value="Software upgrade">
                                 </div>
-                                <button class="btn btn-secondary" onclick="registerMaintenance()">🔧 Register Maintenance</button>
                             </div>
+                            <button class="btn btn-ghost btn-sm" onclick="registerMaintenance()">Register (4 hr window)</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Agent Chat Tab -->
-        <div id="tab-agent" class="tab-content">
-            <div class="card" style="max-width:900px;margin:0 auto">
-                <div class="card-header" style="justify-content:space-between">
-                    <span>🤖 TeleNOC AI Agent — Multi-Step Tool-Using Chat</span>
-                    <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="clearChat()">Clear</button>
+        <!-- ── AI Agent ──────────────────────────────────────────────── -->
+        <div id="tab-agent" class="page">
+            <div class="page-title"><span class="icon">🤖</span> AI Agent — Multi-Step Tool-Using Chat</div>
+            <div class="card" style="max-width:860px">
+                <div class="card-header">
+                    <div class="card-header-left">NOC Intelligence Agent</div>
+                    <button class="btn btn-ghost btn-sm" onclick="clearChat()">Clear</button>
                 </div>
-                <div class="card-body" id="chatMessages" style="max-height:480px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px">
-                    <div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:32px 0">
-                        Ask anything about your NOC — the agent will use live tools to answer.<br>
-                        <span style="font-size:12px;opacity:0.7">e.g. "What BGP issues are open and what do the logs say?" &nbsp;|&nbsp; "Are there any SS7 threats in current alerts?"</span>
+                <div class="chat-wrap">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-empty" id="chatEmpty">
+                            <div class="ce-icon">🤖</div>
+                            <p>Ask anything about your network — the agent will<br>call live tools and reason through a structured answer.</p>
+                            <p style="font-size:11px;margin-top:4px;color:var(--text-muted)">e.g. "What BGP issues are open?" &nbsp;·&nbsp; "Are there SS7 threats?"</p>
+                        </div>
                     </div>
-                </div>
-                <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
-                    <textarea id="agentInput" placeholder="Ask the NOC agent..." rows="2"
-                        style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text-primary);font-size:14px;font-family:inherit;resize:none"
-                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage()}"></textarea>
-                    <button class="btn btn-primary" onclick="sendAgentMessage()" id="agentSendBtn" style="align-self:flex-end">Send</button>
-                </div>
-                <div style="padding:4px 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
-                    <span style="font-size:11px;color:var(--text-secondary)">Quick:</span>
-                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('What BGP issues are open and what do the logs say?')">BGP issues</button>
-                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('Are there any SS7 or 5G signalling threats in current alerts?')">SS7 threats</button>
-                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('Show me all P1 and P2 incidents and their root causes')">P1/P2 summary</button>
-                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="quickAsk('What is causing high CPU on BNG-East and what do the logs show?')">BNG-East CPU</button>
+                    <div class="chat-footer">
+                        <div class="chat-input-row">
+                            <textarea id="agentInput" placeholder="Ask the NOC agent…"
+                                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage()}"></textarea>
+                            <button class="btn btn-primary" onclick="sendAgentMessage()" id="agentSendBtn" style="align-self:flex-end;height:42px">Send</button>
+                        </div>
+                        <div class="quick-btns">
+                            <span class="quick-label">Quick:</span>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('What BGP issues are open and what do the logs say?')">BGP issues</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('Are there any SS7 or 5G signalling threats in current alerts?')">SS7 threats</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('Show me all P1 and P2 incidents and their root causes')">P1/P2 summary</button>
+                            <button class="btn btn-ghost btn-xs" onclick="quickAsk('What is causing high CPU on BNG-East and what do the logs show?')">BNG-East CPU</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- FiGHT Threats Tab -->
-        <div id="tab-fight" class="tab-content">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-                <div class="card">
-                    <div class="card-header">🛡️ Detect MITRE FiGHT Threats</div>
-                    <div class="card-body">
-                        <div style="display:flex;flex-direction:column;gap:10px">
-                            <label style="font-size:12px;color:var(--text-secondary)">Alarm text / log lines to analyse</label>
-                            <textarea id="fightInput" rows="5" style="background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text-primary);font-size:13px;font-family:monospace;resize:vertical"
-                                placeholder="Paste alarm text or log lines here...&#10;e.g. MAP-SRI request from unexpected GT address&#10;bulk SRI queries targeting sequential MSISDNs"></textarea>
-                            <input type="text" id="fightAsset" placeholder="Asset / node name (optional)" style="background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
-                            <button class="btn btn-primary" onclick="runFightDetection()" id="fightBtn">🔍 Detect Threats</button>
-                            <div style="border-top:1px solid var(--border);padding-top:8px">
-                                <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Explain a technique</label>
-                                <div style="display:flex;gap:6px">
-                                    <input type="text" id="fightExplainId" placeholder="e.g. FGT5019" style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
-                                    <button class="btn btn-secondary" onclick="explainTechnique()">Explain</button>
-                                </div>
+        <!-- ── FiGHT ─────────────────────────────────────────────────── -->
+        <div id="tab-fight" class="page">
+            <div class="page-title"><span class="icon">🛡️</span> MITRE FiGHT 5G Threat Detection</div>
+            <div class="two-col">
+                <div style="display:flex;flex-direction:column;gap:16px">
+                    <div class="card">
+                        <div class="card-header"><div class="card-header-left">Scan Evidence</div></div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Alarm text or log lines</label>
+                                <textarea id="fightInput" rows="6" style="font-family:'Consolas','SF Mono',monospace;font-size:12px"
+                                    placeholder="Paste alarm text or log lines here…&#10;e.g. MAP-SRI request from unexpected GT address&#10;bulk SRI queries targeting sequential MSISDNs"></textarea>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header">📋 Results</div>
-                    <div class="card-body" id="fightResults" style="max-height:500px;overflow-y:auto;font-size:13px">
-                        <div style="color:var(--text-secondary);text-align:center;padding:32px 0">Run a detection to see results here.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Escalations Tab -->
-        <div id="tab-escalations" class="tab-content">
-            <div class="card">
-                <div class="card-header">🔔 Escalation Queue</div>
-                <div class="card-body">
-                    <div id="escalationsContent" style="font-size:13px;color:var(--text-secondary)">Loading escalations...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Tab -->
-        <div id="tab-settings" class="tab-content">
-            <div class="card" style="max-width:560px;margin:0 auto">
-                <div class="card-header">⚙️ API Key Configuration</div>
-                <div class="card-body">
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
-                        Paste your API key below — no restart needed. The key is sent to the backend and stored for this session only.
-                    </p>
-
-                    <!-- Current status -->
-                    <div id="configStatus" style="background:#0f172a;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px">
-                        Loading…
-                    </div>
-
-                    <!-- NVIDIA (primary) -->
-                    <div style="margin-bottom:16px">
-                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">
-                            NVIDIA NIM API Key <span style="color:var(--accent-green)">(recommended — free at build.nvidia.com)</span>
-                        </label>
-                        <div style="display:flex;gap:8px">
-                            <input type="password" id="inputNvidiaKey" placeholder="nvapi-…"
-                                style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text-primary);font-size:13px;font-family:monospace">
-                            <button class="btn btn-primary" onclick="saveKey('nvidia')" style="white-space:nowrap">Save &amp; Use</button>
-                        </div>
-                    </div>
-
-                    <!-- OpenRouter (fallback) -->
-                    <div style="margin-bottom:16px;padding-top:12px;border-top:1px solid var(--border)">
-                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">
-                            OpenRouter API Key <span style="color:var(--text-secondary)">(fallback — free at openrouter.ai)</span>
-                        </label>
-                        <div style="display:flex;gap:8px">
-                            <input type="password" id="inputOpenrouterKey" placeholder="sk-or-…"
-                                style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text-primary);font-size:13px;font-family:monospace">
-                            <button class="btn btn-secondary" onclick="saveKey('openrouter')" style="white-space:nowrap">Save &amp; Use</button>
-                        </div>
-                    </div>
-
-                    <!-- Groq (fallback) -->
-                    <div style="margin-bottom:4px;padding-top:12px;border-top:1px solid var(--border)">
-                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">
-                            Groq API Key <span style="color:var(--text-secondary)">(fallback — free at console.groq.com)</span>
-                        </label>
-                        <div style="display:flex;gap:8px">
-                            <input type="password" id="inputGroqKey" placeholder="gsk_…"
-                                style="flex:1;background:#1a2332;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text-primary);font-size:13px;font-family:monospace">
-                            <button class="btn btn-secondary" onclick="saveKey('groq')" style="white-space:nowrap">Save &amp; Use</button>
-                        </div>
-                    </div>
-
-                    <p style="font-size:11px;color:var(--text-secondary);margin-top:16px">
-                        Keys are held only in process memory — never written to disk or logged.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Use the nginx proxy so the UI works from any machine — no hardcoded localhost
-        const API_BASE = '/api';
-
-        // ─── Tab Switching ─────────────────────────────────────────────────
-        function switchTab(name) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
-            document.getElementById('tab-' + name).classList.add('active');
-            document.querySelector(`.tab-bar button[onclick*="${name}"]`).classList.add('active');
-
-            if (name === 'escalations') loadEscalations();
-        }
-
-        // ─── Toast Notifications ──────────────────────────────────────────
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
-        }
-
-        // ─── Health Check ─────────────────────────────────────────────────
-        async function checkHealth() {
-            try {
-                const res = await fetch(`${API_BASE}/health`);
-                const data = await res.json();
-                if (data.status === 'healthy') {
-                    document.getElementById('statusDot').className = 'status-dot online';
-                    document.getElementById('statusText').textContent = 'Connected';
-                    document.getElementById('statusText').style.color = 'var(--accent-green)';
-                    return true;
-                }
-            } catch (e) {
-                document.getElementById('statusDot').className = 'status-dot offline';
-                document.getElementById('statusText').textContent = 'Disconnected';
-                document.getElementById('statusText').style.color = 'var(--accent-red)';
-            }
-            return false;
-        }
-
-        // ─── Load Dashboard Stats ─────────────────────────────────────────
-        async function loadDashboardStats() {
-            try {
-                const res = await fetch(`${API_BASE}/dashboard`);
-                const data = await res.json();
-                if (data.status === 'success') {
-                    const d = data.dashboard;
-                    document.getElementById('statOpenIncidents').textContent = d.counts.open_incidents || 0;
-                    document.getElementById('statP1Count').textContent = d.counts.open_p1 || 0;
-                    document.getElementById('statMTTR').textContent = d.mttr.overall_mttr?.mean ? Math.round(d.mttr.overall_mttr.mean) + 's' : '-';
-                    document.getElementById('statStatus').textContent = d.trends.status || 'unknown';
-                    const statusEl = document.getElementById('statStatus');
-                    if (d.trends.status === 'critical') statusEl.className = 'stat-value red';
-                    else if (d.trends.status === 'warning') statusEl.className = 'stat-value yellow';
-                    else statusEl.className = 'stat-value green';
-                }
-            } catch (e) {
-                console.error('Dashboard load error:', e);
-            }
-        }
-
-        // ─── Diagnose Alarm ───────────────────────────────────────────────
-        async function diagnoseAlarm() {
-            const btn = document.getElementById('diagnoseBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Diagnosing...';
-            document.getElementById('resultContainer').innerHTML = '';
-
-            const alarm = {
-                alarm_id: document.getElementById('alarmId').value || 'ALM-MANUAL',
-                alarm_name: document.getElementById('alarmName').value || 'Manual Alarm',
-                node_name: document.getElementById('nodeName').value || 'Unknown',
-                alarm_type: document.getElementById('alarmType').value || 'generic',
-                alarm_text: document.getElementById('alarmText').value || 'No description provided',
-                timestamp: new Date().toISOString().replace('Z', 'Z'),
-            };
-
-            try {
-                const res = await fetch(`${API_BASE}/diagnose`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(alarm),
-                });
-                const data = await res.json();
-
-                if (data.status === 'success') {
-                    showResult(data.diagnosis);
-                    showToast('Diagnosis complete', 'success');
-                    loadDashboardStats();
-                } else {
-                    showToast('Diagnosis failed: ' + JSON.stringify(data), 'error');
-                }
-            } catch (e) {
-                showToast('Connection error: ' + e.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🚀 Diagnose';
-            }
-        }
-
-        function showResult(diag) {
-            const sev = diag.severity || 'P4';
-            const container = document.getElementById('resultContainer');
-            const alarmId   = diag.alarm_id || 'ALM-MANUAL';
-            const node      = document.getElementById('nodeName').value || 'unknown';
-            const action    = diag.recommended_action || '';
-            container.innerHTML = `
-                <div class="result-card">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                        <h3 style="margin:0">Diagnosis: ${alarmId}</h3>
-                        <span class="severity-badge severity-${sev}">${sev}</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px">
-                        <div><strong>Confidence:</strong> ${(diag.confidence * 100).toFixed(0)}%</div>
-                        <div><strong>Escalate to:</strong> ${diag.escalate_to}</div>
-                        <div><strong>Respond within:</strong> ${diag.respond_within}</div>
-                        <div><strong>MTTR started:</strong> ${new Date(diag.mttr_started_at).toLocaleTimeString()}</div>
-                    </div>
-                    <div style="margin-bottom:8px;font-size:13px">
-                        <strong>Root Cause:</strong> ${diag.root_cause || 'N/A'}
-                    </div>
-                    <div style="margin-bottom:8px;font-size:13px">
-                        <strong>Recommended Action:</strong> ${action || 'N/A'}
-                    </div>
-                    <div style="margin-bottom:8px;font-size:13px">
-                        <strong>Runbook:</strong> ${diag.relevant_runbook}
-                    </div>
-                    ${diag.filtered ? `<div style="color:var(--accent-yellow);font-size:12px;margin-top:8px">⚠️ Filtered: ${diag.filter_reason}</div>` : ''}
-                    ${diag.escalation ? `<div style="margin-top:8px;padding:8px;border-radius:4px;background:rgba(234,179,8,0.1);font-size:12px">
-                        <strong>Escalation:</strong> ${diag.escalation.reason}
-                    </div>` : ''}
-
-                    <!-- How to Fix section -->
-                    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
-                        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--accent-blue)">💊 How to Fix</div>
-                        <div id="fixOutput-${alarmId}" style="font-size:13px;color:var(--text-secondary)">
-                            ${action ? `<div style="margin-bottom:10px;color:var(--text-primary)">${escHtml(action)}</div>` : ''}
-                            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px"
-                                onclick="askHowToFix('${alarmId}', '${escHtml(node)}', '${escHtml(diag.alarm_name||alarmId)}')">
-                                🤖 Ask Agent for Full Fix Steps
+                            <div class="form-group">
+                                <label class="form-label">Asset / Node (optional)</label>
+                                <input type="text" id="fightAsset" placeholder="e.g. STP-Core-01">
+                            </div>
+                            <button class="btn btn-primary" onclick="runFightDetection()" id="fightBtn" style="width:100%;justify-content:center">
+                                🔍 Detect Threats
                             </button>
                         </div>
                     </div>
-                </div>
-            `;
-        }
-
-        async function askHowToFix(alarmId, node, alarmName) {
-            const out = document.getElementById('fixOutput-' + alarmId);
-            out.innerHTML = '<div style="color:var(--text-secondary)">⏳ Agent is generating fix steps…</div>';
-            try {
-                const res = await fetch(`${API_BASE}/agent/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        query: `For alarm ${alarmId} ("${alarmName}") on node ${node}: use lookup_incident and search_knowledge_base to find the root cause, then give me step-by-step remediation instructions for a NOC operator. If there is a remediable FiGHT technique involved, propose it for approval.`
-                    })
-                });
-                const d = await res.json();
-                if (d.status === 'success') {
-                    out.innerHTML = renderFixAnswer(d.answer, d.trace, alarmId, node);
-                } else {
-                    out.innerHTML = `<span style="color:var(--accent-red)">Error: ${escHtml(JSON.stringify(d))}</span>`;
-                }
-            } catch(e) {
-                out.innerHTML = `<span style="color:var(--accent-red)">${escHtml(e.message)}</span>`;
-            }
-        }
-
-        function renderFixAnswer(answer, trace, alarmId, node) {
-            // Check if any trace step has a remediation proposal
-            let approvalHtml = '';
-            for (const step of (trace || [])) {
-                if (step.type === 'tool_call') {
-                    try {
-                        const r = JSON.parse(step.result || '{}');
-                        if (r.requires_approval && r.technique_id) {
-                            approvalHtml += renderApprovalCard(r, node);
-                        }
-                    } catch(_) {}
-                }
-            }
-            const traceHtml = renderTrace(trace);
-            return `<div style="font-size:13px;margin-bottom:10px">${renderMd(answer)}</div>
-                    ${approvalHtml}${traceHtml}`;
-        }
-
-        function clearResult() {
-            document.getElementById('resultContainer').innerHTML = '';
-        }
-
-        function loadSampleAlarm() {
-            const samples = [
-                { id: 'ALM-001', name: 'BGP Session Dropped', node: 'Router-KNB-04', type: 'bgp', text: 'BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 is down. Route prefix count dropped from 500K to 0.' },
-                { id: 'ALM-005', name: 'Interface Drops', node: 'Switch-NBI-07', type: 'interface', text: 'Output queue drops on Switch-NBI-07 interface TenGig0/3. Queue depth at 98%. Buffer utilization critical. Drops: 23000 packets in last minute.' },
-                { id: 'ALM-006', name: 'Power Supply Failure', node: 'Switch-NBI-07', type: 'power', text: 'Power supply unit 1 failed on Switch-NBI-07. Running on redundant PSU 2. Input voltage below threshold.' },
-                { id: 'ALM-009', name: 'DNS Resolution Timeout', node: 'Node-MSA-12', type: 'dns', text: 'DNS resolution timeout on Node-MSA-12. Queries to primary DNS 8.8.8.8 timing out after 5 seconds. Cache hit ratio dropping.' },
-                { id: 'ALM-025', name: 'DNS Server Unreachable', node: 'Node-MSA-12', type: 'dns', text: 'DNS server 10.0.100.53 unreachable from Node-MSA-12. Service impact: 3000 users affected. Cache entries expiring.' },
-                { id: 'ALM-038', name: 'Memory Critical', node: 'Router-NBO-03', type: 'memory', text: 'Memory critical on Router-NBO-03. Free memory: 45MB of 2GB (2%). System may crash. Immediate reboot recommended.' },
-                { id: 'ALM-046', name: 'Router Crash Imminent', node: 'Router-NBO-03', type: 'memory', text: 'Router-NBO-03 memory critically low. Free: 12MB. Watchdog timer about to trigger reboot. Crash dump being generated.' },
-            ];
-            const sample = samples[Math.floor(Math.random() * samples.length)];
-            document.getElementById('alarmId').value = sample.id;
-            document.getElementById('alarmName').value = sample.name;
-            document.getElementById('nodeName').value = sample.node;
-            document.getElementById('alarmType').value = sample.type;
-            document.getElementById('alarmText').value = sample.text;
-        }
-
-        // ─── Ingest Alarms ────────────────────────────────────────────────
-        async function ingestAllAlarms() {
-            try {
-                const res = await fetch(`${API_BASE}/ingest?filepath=/data/sample_alarms.json`, { method: 'POST' });
-                const data = await res.json();
-                showToast(`Ingested: ${data.result?.ingested || 0} alarms`, 'success');
-                loadDashboardStats();
-            } catch (e) {
-                showToast('Ingest error: ' + e.message, 'error');
-            }
-        }
-
-        // ─── Upload Custom Alarm Logs ────────────────────────────────────
-        async function uploadAlarmLogs() {
-            const input = document.getElementById('logFileInput');
-            if (!input.files || input.files.length === 0) {
-                showToast('Choose a .json, .jsonl, or .csv file first', 'error');
-                return;
-            }
-            const file = input.files[0];
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                showToast(`Uploading ${file.name}...`, 'info');
-                const res = await fetch(`${API_BASE}/ingest/upload`, {
-                    method: 'POST',
-                    body: formData,
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    throw new Error(data.detail || 'Upload failed');
-                }
-                showToast(`Ingested ${data.result?.ingested || 0} alarms from ${file.name}`, 'success');
-                loadDashboardStats();
-            } catch (e) {
-                showToast('Upload error: ' + e.message, 'error');
-            }
-        }
-
-        // ─── Escalations ──────────────────────────────────────────────────
-        async function loadEscalations() {
-            try {
-                const res = await fetch(`${API_BASE}/escalations`);
-                const data = await res.json();
-                const el = document.getElementById('escalationsContent');
-
-                if (data.status === 'success') {
-                    const es = data.escalations;
-                    let html = `<div style="margin-bottom:12px">
-                        Pending: ${es.pending || 0} · Overdue: ${es.overdue || 0} · Acknowledged: ${es.acknowledged || 0}
-                    </div>`;
-
-                    if (es.queue && es.queue.length > 0) {
-                        html += es.queue.map(e => `
-                            <div class="escalation-item ${e.time_remaining_seconds <= 0 ? 'escalation-overdue' : 'escalation-pending'}">
-                                <div>
-                                    <div><strong>${e.alarm_id}</strong> → ${e.escalated_to}</div>
-                                    <div style="font-size:11px;color:var(--text-secondary)">${e.reason?.substring(0, 80) || ''}</div>
-                                </div>
-                                <div style="text-align:right">
-                                    <div style="font-size:13px;font-weight:600">${e.time_remaining_formatted}</div>
-                                    <div style="font-size:11px;color:var(--text-secondary)">${e.status}</div>
+                    <div class="card">
+                        <div class="card-header"><div class="card-header-left">Explain Technique</div></div>
+                        <div class="card-body">
+                            <div class="form-group" style="margin:0">
+                                <label class="form-label">Technique ID</label>
+                                <div style="display:flex;gap:8px;margin-top:4px">
+                                    <input type="text" id="fightExplainId" placeholder="e.g. FGT5019" style="flex:1">
+                                    <button class="btn btn-ghost btn-sm" onclick="explainTechnique()">Explain</button>
                                 </div>
                             </div>
-                        `).join('');
-                    } else {
-                        html += '<div style="text-align:center;padding:20px;color:var(--text-secondary)">No pending escalations</div>';
-                    }
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><div class="card-header-left">Results</div></div>
+                    <div class="card-body card-scroll" id="fightResults">
+                        <div class="empty-state"><div class="es-icon">🛡️</div>Run a detection scan to see results here.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    el.innerHTML = html;
-                }
-            } catch (e) {
-                document.getElementById('escalationsContent').innerHTML = `Error: ${e.message}`;
+        <!-- ── Escalations ───────────────────────────────────────────── -->
+        <div id="tab-escalations" class="page">
+            <div class="page-title"><span class="icon">🔔</span> Escalation Queue</div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-left">Active Escalations</div>
+                    <button class="btn btn-ghost btn-sm" onclick="loadEscalations()">🔄 Refresh</button>
+                </div>
+                <div class="card-body" id="escalationsContent">
+                    <div class="empty-state loading">Loading escalations…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Settings ──────────────────────────────────────────────── -->
+        <div id="tab-settings" class="page">
+            <div class="page-title"><span class="icon">⚙️</span> API Configuration</div>
+            <div class="card" style="max-width:540px">
+                <div class="card-header"><div class="card-header-left">LLM Provider Keys</div></div>
+                <div class="card-body">
+                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
+                        Paste your API key — no restart needed. Keys are stored in process memory only and never written to disk.
+                    </p>
+                    <div class="config-status" id="configStatus">Loading…</div>
+
+                    <div class="form-group">
+                        <label class="form-label">NVIDIA NIM API Key <span style="color:var(--green);font-size:10px">(recommended — free at build.nvidia.com)</span></label>
+                        <div class="key-row">
+                            <input type="password" id="inputNvidiaKey" placeholder="nvapi-…" style="flex:1">
+                            <button class="btn btn-primary btn-sm" onclick="saveKey('nvidia')">Save &amp; Use</button>
+                        </div>
+                    </div>
+
+                    <div class="key-section">
+                        <div class="form-group">
+                            <label class="form-label">OpenRouter API Key <span style="color:var(--text-muted);font-size:10px">(free at openrouter.ai)</span></label>
+                            <div class="key-row">
+                                <input type="password" id="inputOpenrouterKey" placeholder="sk-or-…" style="flex:1">
+                                <button class="btn btn-ghost btn-sm" onclick="saveKey('openrouter')">Save &amp; Use</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="key-section">
+                        <div class="form-group">
+                            <label class="form-label">Groq API Key <span style="color:var(--text-muted);font-size:10px">(free at console.groq.com)</span></label>
+                            <div class="key-row">
+                                <input type="password" id="inputGroqKey" placeholder="gsk_…" style="flex:1">
+                                <button class="btn btn-ghost btn-sm" onclick="saveKey('groq')">Save &amp; Use</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div><!-- end shell -->
+
+<script>
+    const API_BASE = '/api';
+
+    // ── Clock ─────────────────────────────────────────────────────────────
+    function tickClock() {
+        document.getElementById('clockEl').textContent =
+            new Date().toLocaleTimeString('en-GB', { hour12: false });
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // ── Tab / page switching ──────────────────────────────────────────────
+    function switchTab(name) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        document.getElementById('nav-' + name).classList.add('active');
+        if (name === 'escalations') loadEscalations();
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────────────
+    function showToast(message, type = 'success') {
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span><span>${message}</span>`;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 4000);
+    }
+
+    // ── Health check ──────────────────────────────────────────────────────
+    async function checkHealth() {
+        try {
+            const res = await fetch(`${API_BASE}/health`);
+            const data = await res.json();
+            if (data.status === 'healthy') {
+                const dot = document.getElementById('statusDot');
+                dot.className = 'dot dot-green dot-pulse';
+                document.getElementById('statusText').textContent = 'Connected';
+                document.getElementById('statusText').style.color = 'var(--green)';
+                return true;
             }
+        } catch (e) {
+            const dot = document.getElementById('statusDot');
+            dot.className = 'dot dot-red';
+            document.getElementById('statusText').textContent = 'Disconnected';
+            document.getElementById('statusText').style.color = 'var(--red)';
         }
+        return false;
+    }
 
-        // ─── Maintenance ──────────────────────────────────────────────────
-        async function registerMaintenance() {
-            const node = document.getElementById('maintNode').value;
-            const reason = document.getElementById('maintReason').value;
-            const now = new Date();
-            const start = now.toISOString().replace('Z', 'Z');
-            const end = new Date(now.getTime() + 4 * 3600000).toISOString().replace('Z', 'Z');
-
-            try {
-                const res = await fetch(`${API_BASE}/maintenance`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ node_name: node, start_time: start, end_time: end, reason: reason }),
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    showToast(`Maintenance registered for ${node}`, 'success');
-                } else {
-                    showToast('Failed: ' + JSON.stringify(data), 'error');
-                }
-            } catch (e) {
-                showToast('Error: ' + e.message, 'error');
+    // ── Dashboard stats ───────────────────────────────────────────────────
+    async function loadDashboardStats() {
+        try {
+            const res = await fetch(`${API_BASE}/dashboard`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                const d = data.dashboard;
+                document.getElementById('statOpenIncidents').textContent = d.counts.open_incidents ?? 0;
+                document.getElementById('statP1Count').textContent = d.counts.open_p1 ?? 0;
+                document.getElementById('statMTTR').textContent =
+                    d.mttr.overall_mttr?.mean ? Math.round(d.mttr.overall_mttr.mean) + 's' : '—';
+                const statusEl = document.getElementById('statStatus');
+                const st = d.trends.status || 'unknown';
+                statusEl.textContent = st;
+                statusEl.className = 'kpi-value ' +
+                    (st === 'critical' ? 'red' : st === 'warning' ? 'yellow' : 'green');
             }
-        }
+        } catch (e) { /* silent */ }
+    }
 
-        // ─── Dashboard Refresh ────────────────────────────────────────────
-        async function refreshDashboard() {
-            await Promise.all([checkHealth(), loadDashboardStats()]);
-            showToast('Dashboard refreshed', 'success');
-        }
+    // ── Diagnose ──────────────────────────────────────────────────────────
+    async function diagnoseAlarm() {
+        const btn = document.getElementById('diagnoseBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Diagnosing…';
+        document.getElementById('resultContainer').innerHTML = '';
 
-        // ─── Agent Chat ───────────────────────────────────────────────────
-        let agentSessionId = null;
+        const alarm = {
+            alarm_id:   document.getElementById('alarmId').value   || 'ALM-MANUAL',
+            alarm_name: document.getElementById('alarmName').value  || 'Manual Alarm',
+            node_name:  document.getElementById('nodeName').value   || 'Unknown',
+            alarm_type: document.getElementById('alarmType').value  || 'generic',
+            alarm_text: document.getElementById('alarmText').value  || 'No description',
+            timestamp:  new Date().toISOString(),
+        };
 
-        function clearChat() {
-            document.getElementById('chatMessages').innerHTML = `
-                <div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:32px 0">
-                    Ask anything about your NOC — the agent will use live tools to answer.
-                </div>`;
-            agentSessionId = null;
-        }
-
-        function quickAsk(q) {
-            document.getElementById('agentInput').value = q;
-            sendAgentMessage();
-        }
-
-        function appendMessage(role, html, meta) {
-            const box = document.getElementById('chatMessages');
-            const wrap = document.createElement('div');
-            wrap.style.cssText = role === 'user'
-                ? 'align-self:flex-end;max-width:75%;background:#1e3a5f;border-radius:12px 12px 2px 12px;padding:10px 14px;font-size:13px'
-                : 'align-self:flex-start;max-width:85%;background:var(--bg-card-hover);border-radius:2px 12px 12px 12px;padding:10px 14px;font-size:13px;border:1px solid var(--border)';
-            wrap.innerHTML = html + (meta ? `<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">${meta}</div>` : '');
-            box.appendChild(wrap);
-            box.scrollTop = box.scrollHeight;
-        }
-
-        function renderTrace(trace) {
-            if (!trace || !trace.length) return '';
-            const steps = trace.filter(s => s.type === 'tool_call');
-            if (!steps.length) return '';
-            const rows = steps.map(s =>
-                `<tr><td style="padding:2px 8px 2px 0;color:var(--accent-blue)">${s.iteration}</td>` +
-                `<td style="padding:2px 8px 2px 0;color:var(--accent-yellow)">${s.tool}</td>` +
-                `<td style="padding:2px 0;color:var(--text-secondary);font-size:11px">${JSON.stringify(s.arguments).slice(0,80)}</td></tr>`
-            ).join('');
-            return `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:11px;color:var(--text-secondary)">🔧 ${steps.length} tool call(s)</summary>
-                <table style="margin-top:6px;width:100%"><tbody>${rows}</tbody></table></details>`;
-        }
-
-        async function sendAgentMessage() {
-            const input = document.getElementById('agentInput');
-            const btn   = document.getElementById('agentSendBtn');
-            const query = input.value.trim();
-            if (!query) return;
-
-            input.value = '';
-            btn.disabled = true;
-            btn.textContent = '…';
-
-            appendMessage('user', `<span style="white-space:pre-wrap">${escHtml(query)}</span>`);<!-- user msgs stay literal -->
-
-            const thinking = document.createElement('div');
-            thinking.style.cssText = 'align-self:flex-start;color:var(--text-secondary);font-size:13px;padding:8px 14px';
-            thinking.innerHTML = '<span style="animation:pulse 1s infinite">⏳ Agent thinking…</span>';
-            document.getElementById('chatMessages').appendChild(thinking);
-            document.getElementById('chatMessages').scrollTop = 9999;
-
-            try {
-                const res = await fetch(`${API_BASE}/agent/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, session_id: agentSessionId })
-                });
-                const d = await res.json();
-                thinking.remove();
-
-                if (d.status === 'success') {
-                    agentSessionId = d.session_id;
-                    const meta = `model: ${d.model} &nbsp;|&nbsp; ${d.iterations} step(s)`;
-                    const traceHtml = renderTrace(d.trace);
-                    // Check trace for any pending remediation approvals
-                    let approvalHtml = '';
-                    for (const step of (d.trace || [])) {
-                        if (step.type === 'tool_call') {
-                            try {
-                                const r = JSON.parse(step.result || '{}');
-                                if (r.requires_approval && r.technique_id) {
-                                    approvalHtml += renderApprovalCard(r, r.target || '');
-                                }
-                            } catch(_) {}
-                        }
-                    }
-                    appendMessage('agent',
-                        `<div>${renderMd(d.answer)}</div>${approvalHtml}${traceHtml}`,
-                        meta);
-                } else {
-                    thinking.remove();
-                    appendMessage('agent', `<span style="color:var(--accent-red)">Error: ${escHtml(JSON.stringify(d))}</span>`);
-                }
-            } catch(e) {
-                thinking.remove();
-                appendMessage('agent', `<span style="color:var(--accent-red)">Request failed: ${escHtml(e.message)}</span>`);
+        try {
+            const res = await fetch(`${API_BASE}/diagnose`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(alarm),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showResult(data.diagnosis);
+                showToast('Diagnosis complete');
+                loadDashboardStats();
+            } else {
+                showToast('Diagnosis failed: ' + JSON.stringify(data), 'error');
             }
-
+        } catch (e) {
+            showToast('Connection error: ' + e.message, 'error');
+        } finally {
             btn.disabled = false;
-            btn.textContent = 'Send';
+            btn.innerHTML = '<span>🚀</span> Diagnose';
         }
+    }
 
-        // ─── Approval Card ─────────────────────────────────────────────────
-        function renderApprovalCard(r, node) {
-            const safeId  = escHtml(r.technique_id);
-            const safeName = escHtml(r.name || r.technique_id);
-            const safeAction = escHtml(r.proposed_action || r.full_mitigation || '');
-            const safeTarget = escHtml(r.target || node || '');
-            const cardId = 'approval-' + r.technique_id + '-' + Date.now();
-            return `<div id="${cardId}" style="margin-top:10px;border:1px solid var(--accent-orange);border-radius:8px;padding:12px;background:rgba(249,115,22,0.07)">
-                <div style="font-weight:600;color:var(--accent-orange);margin-bottom:6px">⚠️ Remediation Proposed — ${safeId}: ${safeName}</div>
-                <div style="font-size:12px;margin-bottom:10px;color:var(--text-primary)">${safeAction}</div>
-                ${safeTarget ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">Target: ${safeTarget}</div>` : ''}
-                <div style="display:flex;gap:8px">
-                    <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;background:#16a34a"
-                        onclick="approveRemediation('${r.technique_id}', '${escHtml(r.target||node||'')}', '${cardId}')">
-                        ✅ Approve &amp; Apply
-                    </button>
-                    <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px"
-                        onclick="document.getElementById('${cardId}').remove()">
-                        ✕ Dismiss
+    function showResult(diag) {
+        const sev    = diag.severity || 'P4';
+        const alarmId = diag.alarm_id || 'ALM-MANUAL';
+        const node   = document.getElementById('nodeName').value || 'unknown';
+        const action = diag.recommended_action || '';
+        document.getElementById('resultContainer').innerHTML = `
+            <div class="result-panel">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <div class="result-panel-title" style="margin:0">📋 ${escHtml(alarmId)}</div>
+                    <span class="badge badge-${sev}">${sev}</span>
+                </div>
+                <div class="result-grid">
+                    <div class="result-field">
+                        <div class="result-field-label">Confidence</div>
+                        <div class="result-field-value">${(diag.confidence * 100).toFixed(0)}%</div>
+                    </div>
+                    <div class="result-field">
+                        <div class="result-field-label">Escalate to</div>
+                        <div class="result-field-value">${escHtml(diag.escalate_to || '—')}</div>
+                    </div>
+                    <div class="result-field">
+                        <div class="result-field-label">Respond within</div>
+                        <div class="result-field-value">${escHtml(diag.respond_within || '—')}</div>
+                    </div>
+                    <div class="result-field">
+                        <div class="result-field-label">Runbook</div>
+                        <div class="result-field-value" style="font-size:12px">${escHtml(diag.relevant_runbook || '—')}</div>
+                    </div>
+                </div>
+                <div class="result-field" style="margin-bottom:8px">
+                    <div class="result-field-label">Root Cause</div>
+                    <div class="result-field-value">${escHtml(diag.root_cause || 'N/A')}</div>
+                </div>
+                <div class="result-field">
+                    <div class="result-field-label">Recommended Action</div>
+                    <div class="result-field-value">${escHtml(action || 'N/A')}</div>
+                </div>
+                ${diag.filtered ? `<div style="color:var(--yellow);font-size:12px;margin-top:8px">⚠️ Filtered: ${escHtml(diag.filter_reason)}</div>` : ''}
+                ${diag.escalation?.should_escalate ? `<div style="margin-top:8px;padding:8px 10px;border-radius:5px;background:rgba(245,158,11,0.08);font-size:12px;color:var(--yellow)">📢 ${escHtml(diag.escalation.reason)}</div>` : ''}
+                <hr class="divider">
+                <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:8px">💊 How to Fix</div>
+                <div id="fixOutput-${alarmId}" style="font-size:13px">
+                    ${action ? `<div style="margin-bottom:10px;color:var(--text-dim)">${escHtml(action)}</div>` : ''}
+                    <button class="btn btn-ghost btn-sm"
+                        onclick="askHowToFix('${alarmId}','${escHtml(node)}','${escHtml(diag.alarm_name||alarmId)}')">
+                        🤖 Ask Agent for Full Fix Steps
                     </button>
                 </div>
             </div>`;
-        }
+    }
 
-        async function approveRemediation(techniqueId, target, cardId) {
-            const card = document.getElementById(cardId);
-            if (card) card.innerHTML = '<div style="color:var(--text-secondary)">⏳ Applying remediation…</div>';
-            try {
-                const res = await fetch(`${API_BASE}/agent/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        query: `Execute approved remediation for MITRE FiGHT technique ${techniqueId} on target "${target}". confirmed=true. Log the remediation action.`
-                    })
-                });
-                const d = await res.json();
-                if (card) {
-                    card.style.borderColor = 'var(--accent-green)';
-                    card.innerHTML = `<div style="color:var(--accent-green);font-weight:600">✅ Remediation Applied — ${escHtml(techniqueId)}</div>
-                        <div style="font-size:12px;margin-top:6px;color:var(--text-primary)">${renderMd(d.answer||'')}</div>`;
-                }
-                showToast(`Remediation for ${techniqueId} applied and logged`, 'success');
-            } catch(e) {
-                if (card) card.innerHTML = `<div style="color:var(--accent-red)">Failed: ${escHtml(e.message)}</div>`;
+    async function askHowToFix(alarmId, node, alarmName) {
+        const out = document.getElementById('fixOutput-' + alarmId);
+        out.innerHTML = '<div style="color:var(--text-muted)" class="loading">⏳ Agent generating fix steps…</div>';
+        try {
+            const res = await fetch(`${API_BASE}/agent/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: `For alarm ${alarmId} ("${alarmName}") on node ${node}: use lookup_incident and search_knowledge_base to find the root cause, then give me step-by-step remediation instructions for a NOC operator. If there is a remediable FiGHT technique involved, propose it for approval.` })
+            });
+            const d = await res.json();
+            if (d.status === 'success') {
+                out.innerHTML = renderFixAnswer(d.answer, d.trace, alarmId, node);
+            } else {
+                out.innerHTML = `<span style="color:var(--red)">Error: ${escHtml(JSON.stringify(d))}</span>`;
+            }
+        } catch(e) {
+            out.innerHTML = `<span style="color:var(--red)">${escHtml(e.message)}</span>`;
+        }
+    }
+
+    function renderFixAnswer(answer, trace, alarmId, node) {
+        let approvalHtml = '';
+        for (const step of (trace || [])) {
+            if (step.type === 'tool_call') {
+                try {
+                    const r = JSON.parse(step.result || '{}');
+                    if (r.requires_approval && r.technique_id) approvalHtml += renderApprovalCard(r, node);
+                } catch(_) {}
             }
         }
+        return `<div style="font-size:13px;margin-bottom:10px">${renderMd(answer)}</div>${approvalHtml}${renderTrace(trace)}`;
+    }
 
-        // ─── FiGHT Detection ──────────────────────────────────────────────
-        async function runFightDetection() {
-            const text  = document.getElementById('fightInput').value.trim();
-            const asset = document.getElementById('fightAsset').value.trim();
-            const btn   = document.getElementById('fightBtn');
-            const out   = document.getElementById('fightResults');
-            if (!text) { showToast('Paste some alarm text first', 'error'); return; }
+    function clearResult() { document.getElementById('resultContainer').innerHTML = ''; }
 
-            btn.disabled = true; btn.textContent = '⏳ Detecting…';
-            out.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:24px">Running detection…</div>';
+    function loadSampleAlarm() {
+        const samples = [
+            { id:'ALM-001', name:'BGP Session Dropped', node:'Router-KNB-04', type:'bgp', text:'BGP session to upstream provider AS64512 dropped on Router-KNB-04. Neighbor 10.0.1.1 is down. Route prefix count dropped from 500K to 0.' },
+            { id:'ALM-005', name:'Interface Drops', node:'Switch-NBI-07', type:'interface', text:'Output queue drops on Switch-NBI-07 interface TenGig0/3. Queue depth at 98%. Buffer utilization critical. Drops: 23000 packets in last minute.' },
+            { id:'ALM-006', name:'Power Supply Failure', node:'Switch-NBI-07', type:'power', text:'Power supply unit 1 failed on Switch-NBI-07. Running on redundant PSU 2. Input voltage below threshold.' },
+            { id:'ALM-009', name:'DNS Resolution Timeout', node:'Node-MSA-12', type:'dns', text:'DNS resolution timeout on Node-MSA-12. Queries to primary DNS 8.8.8.8 timing out after 5 seconds. Cache hit ratio dropping.' },
+            { id:'ALM-038', name:'Memory Critical', node:'Router-NBO-03', type:'memory', text:'Memory critical on Router-NBO-03. Free memory: 45MB of 2GB (2%). System may crash. Immediate action required.' },
+        ];
+        const s = samples[Math.floor(Math.random() * samples.length)];
+        document.getElementById('alarmId').value   = s.id;
+        document.getElementById('alarmName').value = s.name;
+        document.getElementById('nodeName').value  = s.node;
+        document.getElementById('alarmType').value = s.type;
+        document.getElementById('alarmText').value = s.text;
+    }
 
-            // Use the agent to detect
-            try {
-                const query = `Run detect_fight_techniques on the following evidence and report all findings with confidence scores.\n\nEvidence:\n${text}`;
-                const res = await fetch(`${API_BASE}/agent/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query })
-                });
-                const d = await res.json();
-                if (d.status === 'success') {
-                    const trace = (d.trace || []).filter(s => s.type === 'tool_call');
-                    const findingsStep = trace.find(s => s.tool === 'detect_fight_techniques');
-                    let findingsHtml = '';
-                    if (findingsStep) {
+    // ── Ingest ────────────────────────────────────────────────────────────
+    async function ingestAllAlarms() {
+        try {
+            const res = await fetch(`${API_BASE}/ingest?filepath=/data/sample_alarms.json`, { method: 'POST' });
+            const data = await res.json();
+            showToast(`Ingested ${data.result?.ingested || 0} alarms`);
+            loadDashboardStats();
+        } catch (e) { showToast('Ingest error: ' + e.message, 'error'); }
+    }
+
+    async function uploadAlarmLogs() {
+        const input = document.getElementById('logFileInput');
+        if (!input.files?.length) { showToast('Choose a file first', 'error'); return; }
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        try {
+            const res = await fetch(`${API_BASE}/ingest/upload`, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Upload failed');
+            showToast(`Ingested ${data.result?.ingested || 0} alarms from ${input.files[0].name}`);
+            loadDashboardStats();
+        } catch (e) { showToast('Upload error: ' + e.message, 'error'); }
+    }
+
+    // ── Escalations ───────────────────────────────────────────────────────
+    async function loadEscalations() {
+        const el = document.getElementById('escalationsContent');
+        try {
+            const res = await fetch(`${API_BASE}/escalations`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                const es = data.escalations;
+                let html = `<div style="display:flex;gap:16px;margin-bottom:14px;font-size:13px">
+                    <span>Pending: <strong>${es.pending||0}</strong></span>
+                    <span style="color:var(--red)">Overdue: <strong>${es.overdue||0}</strong></span>
+                    <span style="color:var(--green)">Acknowledged: <strong>${es.acknowledged||0}</strong></span>
+                </div>`;
+                if (es.queue?.length) {
+                    html += es.queue.map(e => `
+                        <div class="esc-row ${e.time_remaining_seconds<=0?'overdue':'pending'}">
+                            <div>
+                                <div style="font-weight:600;font-size:13px">${escHtml(e.alarm_id)} → ${escHtml(e.escalated_to)}</div>
+                                <div class="esc-meta">${escHtml((e.reason||'').substring(0,80))}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-size:13px;font-weight:700;color:${e.time_remaining_seconds<=0?'var(--red)':'var(--yellow)'}">${escHtml(e.time_remaining_formatted)}</div>
+                                <div style="font-size:11px;color:var(--text-muted)">${escHtml(e.status)}</div>
+                            </div>
+                        </div>`).join('');
+                } else {
+                    html += '<div class="empty-state"><div class="es-icon">✅</div>No pending escalations</div>';
+                }
+                el.innerHTML = html;
+            }
+        } catch (e) { el.innerHTML = `<div style="color:var(--red)">Error: ${escHtml(e.message)}</div>`; }
+    }
+
+    // ── Maintenance ───────────────────────────────────────────────────────
+    async function registerMaintenance() {
+        const node = document.getElementById('maintNode').value;
+        const reason = document.getElementById('maintReason').value;
+        const now = new Date();
+        try {
+            const res = await fetch(`${API_BASE}/maintenance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ node_name: node, start_time: now.toISOString(), end_time: new Date(now.getTime()+4*3600000).toISOString(), reason }),
+            });
+            const data = await res.json();
+            if (data.status === 'success') showToast(`Maintenance registered for ${node}`);
+            else showToast('Failed: ' + JSON.stringify(data), 'error');
+        } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function refreshDashboard() {
+        await Promise.all([checkHealth(), loadDashboardStats()]);
+        showToast('Dashboard refreshed');
+    }
+
+    // ── Agent chat ────────────────────────────────────────────────────────
+    let agentSessionId = null;
+
+    function clearChat() {
+        const box = document.getElementById('chatMessages');
+        box.innerHTML = `<div class="chat-empty" id="chatEmpty">
+            <div class="ce-icon">🤖</div>
+            <p>Ask anything about your network — the agent will<br>call live tools and reason through a structured answer.</p>
+        </div>`;
+        agentSessionId = null;
+    }
+
+    function quickAsk(q) {
+        document.getElementById('agentInput').value = q;
+        sendAgentMessage();
+    }
+
+    function appendMessage(role, html, meta) {
+        document.getElementById('chatEmpty')?.remove();
+        const box = document.getElementById('chatMessages');
+        const wrap = document.createElement('div');
+        wrap.className = role === 'user' ? 'msg-user' : 'msg-agent';
+        wrap.innerHTML = html + (meta ? `<div class="msg-meta">${meta}</div>` : '');
+        box.appendChild(wrap);
+        box.scrollTop = box.scrollHeight;
+        return wrap;
+    }
+
+    function renderTrace(trace) {
+        if (!trace?.length) return '';
+        const steps = trace.filter(s => s.type === 'tool_call');
+        if (!steps.length) return '';
+        const rows = steps.map(s =>
+            `<tr>
+                <td style="padding:3px 10px 3px 0;color:var(--text-muted);font-size:11px">#${s.iteration}</td>
+                <td style="padding:3px 10px 3px 0;color:var(--cyan);font-size:12px;font-weight:600">${escHtml(s.tool)}</td>
+                <td style="padding:3px 0;color:var(--text-dim);font-size:11px">${escHtml(JSON.stringify(s.arguments).slice(0,90))}</td>
+            </tr>`).join('');
+        return `<details style="margin-top:10px">
+            <summary>🔧 ${steps.length} tool call(s)</summary>
+            <table style="margin-top:6px;width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table>
+        </details>`;
+    }
+
+    async function sendAgentMessage() {
+        const input = document.getElementById('agentInput');
+        const btn   = document.getElementById('agentSendBtn');
+        const query = input.value.trim();
+        if (!query) return;
+
+        input.value = '';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>';
+
+        appendMessage('user', `<span style="white-space:pre-wrap">${escHtml(query)}</span>`);
+
+        const thinking = appendMessage('agent', '<span class="loading" style="color:var(--text-muted)">⏳ Agent thinking…</span>');
+
+        try {
+            const res = await fetch(`${API_BASE}/agent/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, session_id: agentSessionId })
+            });
+            const d = await res.json();
+            thinking.remove();
+
+            if (d.status === 'success') {
+                agentSessionId = d.session_id;
+                let approvalHtml = '';
+                for (const step of (d.trace || [])) {
+                    if (step.type === 'tool_call') {
                         try {
-                            const r = JSON.parse(findingsStep.result);
-                            if (r.findings && r.findings.length) {
-                                findingsHtml = r.findings.map(f => `
-                                    <div style="border:1px solid ${f.confidence_tier==='HIGH'?'var(--accent-red)':f.confidence_tier==='MEDIUM'?'var(--accent-orange)':'var(--border)'};border-radius:8px;padding:12px;margin-bottom:10px">
-                                        <div style="font-weight:600;color:${f.confidence_tier==='HIGH'?'var(--accent-red)':f.confidence_tier==='MEDIUM'?'var(--accent-orange)':'var(--accent-yellow)'}">
-                                            ${f.technique_id} — ${escHtml(f.name)}
-                                        </div>
-                                        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escHtml(f.tactic)} &nbsp;|&nbsp; Confidence: ${f.confidence}/100 (${f.confidence_tier})</div>
-                                        <div style="margin-top:8px;font-size:12px">
-                                            <strong>Indicators:</strong><ul style="margin:4px 0 0 16px">${(f.matched_indicators||[]).map(i=>`<li>${escHtml(i)}</li>`).join('')}</ul>
-                                        </div>
-                                        <div style="margin-top:6px;font-size:12px;color:var(--text-secondary)">Kill-chain: ${escHtml(f.precursor_note||'')}</div>
-                                        <div style="margin-top:4px;font-size:12px;color:var(--text-secondary)">Self-critique: ${escHtml(f.self_critique||'')} <em>(${escHtml(f.critique_verdict||'')})</em></div>
-                                        ${f.confidence_note ? `<div style="margin-top:4px;font-size:12px;color:var(--accent-yellow)">⚠️ ${escHtml(f.confidence_note)}</div>` : ''}
-                                        <button class="btn btn-secondary" style="margin-top:8px;padding:4px 10px;font-size:11px" onclick="explainTechniqueById('${f.technique_id}')">📖 Explain ${f.technique_id}</button>
-                                    </div>`).join('');
-                            } else {
-                                findingsHtml = `<div style="color:var(--accent-green);text-align:center;padding:20px">✅ No FiGHT threats detected above threshold.</div>`;
-                            }
-                            // Add approval cards for HIGH/MEDIUM findings
-                            const approvable = (r.findings||[]).filter(f => ['HIGH','MEDIUM'].includes(f.confidence_tier));
-                            if (approvable.length) {
-                                findingsHtml += approvable.map(f => renderApprovalCard(
-                                    { technique_id: f.technique_id, name: f.name,
-                                      proposed_action: f.detection_guidance,
-                                      target: document.getElementById('fightAsset').value.trim() || 'network',
-                                      requires_approval: true },
-                                    document.getElementById('fightAsset').value.trim() || 'network'
-                                )).join('');
-                            }
+                            const r = JSON.parse(step.result || '{}');
+                            if (r.requires_approval && r.technique_id) approvalHtml += renderApprovalCard(r, r.target || '');
                         } catch(_) {}
                     }
-                    out.innerHTML = (findingsHtml || '') +
-                        `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;font-size:13px;color:var(--text-secondary)">${renderMd(d.answer)}</div>`;
-                } else {
-                    out.innerHTML = `<div style="color:var(--accent-red)">Error: ${escHtml(JSON.stringify(d))}</div>`;
                 }
-            } catch(e) {
-                out.innerHTML = `<div style="color:var(--accent-red)">Request failed: ${escHtml(e.message)}</div>`;
+                const meta = `model: ${escHtml(d.model)} &nbsp;·&nbsp; ${d.iterations} step(s)`;
+                appendMessage('agent', `<div>${renderMd(d.answer)}</div>${approvalHtml}${renderTrace(d.trace)}`, meta);
+            } else {
+                appendMessage('agent', `<span style="color:var(--red)">Error: ${escHtml(JSON.stringify(d))}</span>`);
             }
-            btn.disabled = false; btn.textContent = '🔍 Detect Threats';
+        } catch(e) {
+            thinking.remove();
+            appendMessage('agent', `<span style="color:var(--red)">Request failed: ${escHtml(e.message)}</span>`);
         }
 
-        async function explainTechniqueById(tid) {
-            document.getElementById('fightExplainId').value = tid;
-            await explainTechnique();
-        }
+        btn.disabled = false;
+        btn.textContent = 'Send';
+    }
 
-        async function explainTechnique() {
-            const tid = document.getElementById('fightExplainId').value.trim().toUpperCase();
-            const out = document.getElementById('fightResults');
-            if (!tid) { showToast('Enter a technique ID', 'error'); return; }
-            out.innerHTML = '<div style="color:var(--text-secondary);padding:20px">Loading explanation…</div>';
-            try {
-                const res = await fetch(`${API_BASE}/agent/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: `Explain MITRE FiGHT technique ${tid} in plain language for a NOC operator.` })
-                });
-                const d = await res.json();
-                out.innerHTML = `<div style="font-size:13px">${renderMd(d.answer || JSON.stringify(d))}</div>`;
-            } catch(e) {
-                out.innerHTML = `<div style="color:var(--accent-red)">${escHtml(e.message)}</div>`;
+    // ── Approval card ─────────────────────────────────────────────────────
+    function renderApprovalCard(r, node) {
+        const cardId = 'approval-' + r.technique_id + '-' + Date.now();
+        return `<div class="approval-card" id="${cardId}">
+            <div class="approval-title">⚠️ Remediation Proposed — ${escHtml(r.technique_id)}: ${escHtml(r.name||r.technique_id)}</div>
+            <div class="approval-action">${escHtml(r.proposed_action||r.full_mitigation||'')}</div>
+            ${(r.target||node) ? `<div class="approval-target">Target: ${escHtml(r.target||node)}</div>` : ''}
+            <div class="approval-btns">
+                <button class="btn btn-success btn-sm"
+                    onclick="approveRemediation('${escHtml(r.technique_id)}','${escHtml(r.target||node||'')}','${cardId}')">
+                    ✅ Approve &amp; Apply
+                </button>
+                <button class="btn btn-ghost btn-sm" onclick="document.getElementById('${cardId}').remove()">✕ Dismiss</button>
+            </div>
+        </div>`;
+    }
+
+    async function approveRemediation(techniqueId, target, cardId) {
+        const card = document.getElementById(cardId);
+        if (card) card.innerHTML = '<div class="loading" style="color:var(--text-muted);font-size:13px">⏳ Applying remediation…</div>';
+        try {
+            const res = await fetch(`${API_BASE}/agent/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: `Execute approved remediation for MITRE FiGHT technique ${techniqueId} on target "${target}". confirmed=true. Log the remediation action.` })
+            });
+            const d = await res.json();
+            if (card) {
+                card.style.borderColor = 'var(--green)';
+                card.style.background = 'rgba(16,185,129,0.05)';
+                card.innerHTML = `<div style="color:var(--green);font-weight:700">✅ Remediation Applied — ${escHtml(techniqueId)}</div>
+                    <div style="font-size:12px;margin-top:6px">${renderMd(d.answer||'')}</div>`;
             }
+            showToast(`Remediation for ${techniqueId} applied and logged`);
+        } catch(e) {
+            if (card) card.innerHTML = `<div style="color:var(--red)">Failed: ${escHtml(e.message)}</div>`;
         }
+    }
 
-        function escHtml(s) {
-            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
+    // ── FiGHT detection ───────────────────────────────────────────────────
+    async function runFightDetection() {
+        const text  = document.getElementById('fightInput').value.trim();
+        const asset = document.getElementById('fightAsset').value.trim();
+        const btn   = document.getElementById('fightBtn');
+        const out   = document.getElementById('fightResults');
+        if (!text) { showToast('Paste some alarm text first', 'error'); return; }
 
-        // ─── Markdown renderer (tables + bold/italic + code + bullets) ────
-        function renderMd(raw) {
-            if (!raw) return '';
-            const lines = String(raw).split('\n');
-            let html = '';
-            let inTable = false;
-            let tableHtml = '';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Detecting…';
+        out.innerHTML = '<div class="loading" style="color:var(--text-muted);padding:24px;text-align:center">Running FiGHT detection engine…</div>';
 
-            const inlineFormat = (s) => {
-                // Escape HTML first
-                s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                // **bold**
-                s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-                // *italic* or _italic_
-                s = s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
-                s = s.replace(/_(.+?)_/g, '<em>$1</em>');
-                // `code`
-                s = s.replace(/`([^`]+)`/g, '<code style="background:#0f172a;padding:1px 5px;border-radius:3px;font-size:12px">$1</code>');
-                return s;
-            };
-
-            const flushTable = () => {
-                if (!tableHtml) return;
-                html += `<div style="overflow-x:auto;margin:10px 0"><table style="width:100%;border-collapse:collapse;font-size:13px">${tableHtml}</table></div>`;
-                tableHtml = '';
-                inTable = false;
-            };
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                const trimmed = line.trim();
-
-                // Detect table row: starts and ends with |
-                if (/^\|.+\|$/.test(trimmed)) {
-                    const cells = trimmed.slice(1, -1).split('|');
-                    // Separator row (---|---) → skip, marks header end
-                    if (cells.every(c => /^[\s\-:]+$/.test(c))) {
-                        // previous row was header — wrap it
-                        tableHtml = tableHtml.replace(/<tr([^>]*)><td/g, '<tr$1><th').replace(/<\/td>/g, '</th>');
-                        continue;
-                    }
-                    const tag = inTable ? 'td' : 'th'; // first row = header until sep seen
-                    const row = cells.map(c =>
-                        `<td style="padding:6px 12px;border:1px solid #1e293b;text-align:left">${inlineFormat(c.trim())}</td>`
-                    ).join('');
-                    tableHtml += `<tr style="background:${inTable ? '#0f172a' : '#111827'}">${row}</tr>`;
-                    inTable = true;
-                    continue;
+        try {
+            const res = await fetch(`${API_BASE}/agent/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: `Run detect_fight_techniques on the following evidence and report all findings with confidence scores.\n\nEvidence:\n${text}` })
+            });
+            const d = await res.json();
+            if (d.status === 'success') {
+                const trace = (d.trace||[]).filter(s => s.type === 'tool_call');
+                const findingsStep = trace.find(s => s.tool === 'detect_fight_techniques');
+                let html = '';
+                if (findingsStep) {
+                    try {
+                        const r = JSON.parse(findingsStep.result);
+                        if (r.findings?.length) {
+                            html = r.findings.map(f => {
+                                const tier = (f.confidence_tier||'LOW').toLowerCase();
+                                return `<div class="finding-card ${tier}">
+                                    <div class="finding-title ${tier}">${escHtml(f.technique_id)} — ${escHtml(f.name)}</div>
+                                    <div class="finding-meta">${escHtml(f.tactic)} &nbsp;·&nbsp; Confidence: ${f.confidence}/100 &nbsp;·&nbsp; <strong>${escHtml(f.confidence_tier)}</strong></div>
+                                    <div class="finding-indicators">
+                                        <strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted)">Matched Indicators</strong>
+                                        <ul style="margin-top:4px">${(f.matched_indicators||[]).map(i=>`<li>${escHtml(i)}</li>`).join('')}</ul>
+                                    </div>
+                                    ${f.self_critique ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Self-critique: ${escHtml(f.self_critique)} <em>(${escHtml(f.critique_verdict||'')})</em></div>` : ''}
+                                    ${f.confidence_note ? `<div style="font-size:11px;color:var(--yellow);margin-top:4px">⚠️ ${escHtml(f.confidence_note)}</div>` : ''}
+                                    <button class="btn btn-ghost btn-xs" style="margin-top:8px" onclick="explainTechniqueById('${escHtml(f.technique_id)}')">📖 Explain</button>
+                                </div>`;
+                            }).join('');
+                            const approvable = (r.findings||[]).filter(f => ['HIGH','MEDIUM'].includes(f.confidence_tier));
+                            if (approvable.length) {
+                                html += approvable.map(f => renderApprovalCard(
+                                    { technique_id: f.technique_id, name: f.name, proposed_action: f.detection_guidance, target: asset||'network', requires_approval: true },
+                                    asset || 'network'
+                                )).join('');
+                            }
+                        } else {
+                            html = '<div class="empty-state"><div class="es-icon">✅</div>No FiGHT threats detected above threshold.</div>';
+                        }
+                    } catch(_) {}
                 }
-
-                // Non-table line — flush any pending table
-                if (inTable) flushTable();
-
-                // Heading ### ## #
-                if (/^#{1,3} /.test(trimmed)) {
-                    const lvl = trimmed.match(/^(#+)/)[1].length;
-                    const text = inlineFormat(trimmed.replace(/^#+\s*/, ''));
-                    const sz = lvl === 1 ? '16px' : lvl === 2 ? '15px' : '14px';
-                    html += `<div style="font-weight:700;font-size:${sz};margin:12px 0 4px">${text}</div>`;
-                    continue;
-                }
-
-                // Bullet - or *
-                if (/^[-*] /.test(trimmed)) {
-                    html += `<div style="margin:2px 0 2px 14px;display:flex;gap:6px"><span style="color:var(--accent-blue);flex-shrink:0">•</span><span>${inlineFormat(trimmed.slice(2))}</span></div>`;
-                    continue;
-                }
-
-                // Numbered list
-                if (/^\d+\. /.test(trimmed)) {
-                    const num = trimmed.match(/^(\d+)\./)[1];
-                    const rest = trimmed.replace(/^\d+\.\s*/, '');
-                    html += `<div style="margin:2px 0 2px 14px;display:flex;gap:6px"><span style="color:var(--accent-blue);flex-shrink:0;min-width:18px">${num}.</span><span>${inlineFormat(rest)}</span></div>`;
-                    continue;
-                }
-
-                // Horizontal rule
-                if (/^---+$/.test(trimmed)) {
-                    html += '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">';
-                    continue;
-                }
-
-                // Empty line → spacing
-                if (!trimmed) {
-                    html += '<div style="height:6px"></div>';
-                    continue;
-                }
-
-                // Normal paragraph
-                html += `<div style="margin:2px 0">${inlineFormat(trimmed)}</div>`;
+                out.innerHTML = (html||'') + `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;font-size:13px;color:var(--text-dim)">${renderMd(d.answer)}</div>`;
+            } else {
+                out.innerHTML = `<div style="color:var(--red)">Error: ${escHtml(JSON.stringify(d))}</div>`;
             }
+        } catch(e) {
+            out.innerHTML = `<div style="color:var(--red)">Request failed: ${escHtml(e.message)}</div>`;
+        }
+        btn.disabled = false;
+        btn.innerHTML = '🔍 Detect Threats';
+    }
 
+    async function explainTechniqueById(tid) {
+        document.getElementById('fightExplainId').value = tid;
+        await explainTechnique();
+    }
+
+    async function explainTechnique() {
+        const tid = document.getElementById('fightExplainId').value.trim().toUpperCase();
+        const out = document.getElementById('fightResults');
+        if (!tid) { showToast('Enter a technique ID', 'error'); return; }
+        out.innerHTML = '<div class="loading" style="color:var(--text-muted);padding:20px">Loading explanation…</div>';
+        try {
+            const res = await fetch(`${API_BASE}/agent/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: `Explain MITRE FiGHT technique ${tid} in plain language for a NOC operator.` })
+            });
+            const d = await res.json();
+            out.innerHTML = `<div style="font-size:13px">${renderMd(d.answer||JSON.stringify(d))}</div>`;
+        } catch(e) {
+            out.innerHTML = `<div style="color:var(--red)">${escHtml(e.message)}</div>`;
+        }
+    }
+
+    // ── Markdown renderer ─────────────────────────────────────────────────
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderMd(raw) {
+        if (!raw) return '';
+        const lines = String(raw).split('\n');
+        let html = '', inTable = false, tableHtml = '';
+
+        const fmt = s => {
+            s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+            s = s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');
+            s = s.replace(/_(.+?)_/g,'<em>$1</em>');
+            s = s.replace(/`([^`]+)`/g,'<code>$1</code>');
+            return s;
+        };
+
+        const flushTable = () => {
+            if (!tableHtml) return;
+            html += `<div style="overflow-x:auto;margin:10px 0"><table style="width:100%;border-collapse:collapse;font-size:13px">${tableHtml}</table></div>`;
+            tableHtml = ''; inTable = false;
+        };
+
+        for (const line of lines) {
+            const t = line.trim();
+            if (/^\|.+\|$/.test(t)) {
+                const cells = t.slice(1,-1).split('|');
+                if (cells.every(c => /^[\s\-:]+$/.test(c))) { tableHtml = tableHtml.replace(/<tr([^>]*)><td/g,'<tr$1><th').replace(/<\/td>/g,'</th>'); continue; }
+                const row = cells.map(c => `<td style="padding:6px 12px;border:1px solid var(--border-soft)">${fmt(c.trim())}</td>`).join('');
+                tableHtml += `<tr style="background:${inTable?'var(--bg-input)':'var(--bg-card)'}">${row}</tr>`;
+                inTable = true; continue;
+            }
             if (inTable) flushTable();
-            return html;
+            if (/^#{1,3} /.test(t)) { const lvl=t.match(/^(#+)/)[1].length; const sz=lvl===1?'16px':lvl===2?'15px':'14px'; html+=`<div style="font-weight:700;font-size:${sz};margin:12px 0 4px">${fmt(t.replace(/^#+\s*/,''))}</div>`; continue; }
+            if (/^[-*] /.test(t)) { html+=`<div style="margin:2px 0 2px 14px;display:flex;gap:6px"><span style="color:var(--blue);flex-shrink:0">•</span><span>${fmt(t.slice(2))}</span></div>`; continue; }
+            if (/^\d+\. /.test(t)) { const n=t.match(/^(\d+)\./)[1]; html+=`<div style="margin:2px 0 2px 14px;display:flex;gap:6px"><span style="color:var(--blue);flex-shrink:0;min-width:18px">${n}.</span><span>${fmt(t.replace(/^\d+\.\s*/,''))}</span></div>`; continue; }
+            if (/^---+$/.test(t)) { html+='<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">'; continue; }
+            if (!t) { html+='<div style="height:6px"></div>'; continue; }
+            html+=`<div style="margin:2px 0">${fmt(t)}</div>`;
         }
+        if (inTable) flushTable();
+        return html;
+    }
 
-        // ─── Settings / Config ────────────────────────────────────────────
-        async function loadConfigStatus() {
-            try {
-                const res = await fetch(`${API_BASE}/config`);
-                const d = await res.json();
-                const providerColor = d.nvidia_key_set ? 'var(--accent-green)' : d.openrouter_key_set ? 'var(--accent-yellow)' : 'var(--accent-red)';
-                document.getElementById('configStatus').innerHTML =
-                    `<div style="display:flex;flex-direction:column;gap:6px">
-                        <div>Active provider: <strong style="color:${providerColor}">${d.active_provider.toUpperCase()}</strong></div>
-                        <div style="font-size:12px;color:var(--text-secondary)">
-                            NVIDIA key: ${d.nvidia_key_set ? '<span style="color:var(--accent-green)">✓ set</span>' : '<span style="color:var(--accent-red)">✗ not set</span>'}
-                            &nbsp;|&nbsp;
-                            OpenRouter key: ${d.openrouter_key_set ? '<span style="color:var(--accent-green)">✓ set</span>' : '<span style="color:var(--accent-red)">✗ not set</span>'}
-                            &nbsp;|&nbsp;
-                            Groq key: ${d.groq_key_set ? '<span style="color:var(--accent-green)">✓ set</span>' : '<span style="color:var(--accent-red)">✗ not set</span>'}
-                        </div>
-                        <div style="font-size:12px;color:var(--text-secondary)">Model: ${d.nvidia_model}</div>
-                    </div>`;
-                // Flash the settings tab button red if no key is configured
-                const btn = document.getElementById('settingsTabBtn');
-                if (!d.nvidia_key_set && !d.openrouter_key_set && !d.groq_key_set) {
-                    btn.style.color = 'var(--accent-red)';
-                    btn.textContent = '⚙️ Settings ← set key';
-                } else {
-                    btn.style.color = '';
-                    btn.textContent = '⚙️ Settings';
-                }
-            } catch(e) {
-                document.getElementById('configStatus').innerHTML = `<span style="color:var(--accent-red)">Could not reach backend: ${escHtml(e.message)}</span>`;
+    // ── Settings / config ─────────────────────────────────────────────────
+    async function loadConfigStatus() {
+        try {
+            const res = await fetch(`${API_BASE}/config`);
+            const d = await res.json();
+            const provColor = d.nvidia_key_set ? 'var(--green)' : d.openrouter_key_set ? 'var(--yellow)' : 'var(--red)';
+            const keyRow = (label, set) => `<span>${label}: ${set ? '<span style="color:var(--green)">✓ set</span>' : '<span style="color:var(--red)">✗ not set</span>'}</span>`;
+            document.getElementById('configStatus').innerHTML = `
+                <div style="margin-bottom:6px">Active provider: <strong style="color:${provColor}">${d.active_provider.toUpperCase()}</strong></div>
+                <div style="font-size:12px;color:var(--text-muted);display:flex;gap:14px;flex-wrap:wrap">
+                    ${keyRow('NVIDIA', d.nvidia_key_set)}
+                    ${keyRow('OpenRouter', d.openrouter_key_set)}
+                    ${keyRow('Groq', d.groq_key_set)}
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Model: ${escHtml(d.nvidia_model)}</div>`;
+            const btn = document.getElementById('settingsTabBtn');
+            if (!d.nvidia_key_set && !d.openrouter_key_set && !d.groq_key_set) {
+                btn.textContent = 'Settings ← set key';
+                btn.style.color = 'var(--red)';
+            } else {
+                btn.textContent = 'Settings';
+                btn.style.color = '';
             }
+        } catch(e) {
+            document.getElementById('configStatus').innerHTML = `<span style="color:var(--red)">Could not reach backend: ${escHtml(e.message)}</span>`;
         }
+    }
 
-        async function saveKey(provider) {
-            const keyMap = { nvidia: 'inputNvidiaKey', openrouter: 'inputOpenrouterKey', groq: 'inputGroqKey' };
-            const val = document.getElementById(keyMap[provider]).value.trim();
-            if (!val) { showToast('Paste a key first', 'error'); return; }
-
-            const body = {};
-            if (provider === 'nvidia')      body.nvidia_api_key      = val;
-            if (provider === 'openrouter')  body.openrouter_api_key  = val;
-            if (provider === 'groq')        body.groq_api_key        = val;
-
-            try {
-                const res = await fetch(`${API_BASE}/config`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                });
-                const d = await res.json();
-                if (res.ok) {
-                    showToast(`${provider.toUpperCase()} key saved — provider: ${d.active_provider}`, 'success');
-                    document.getElementById(keyMap[provider]).value = '';
-                    await loadConfigStatus();
-                } else {
-                    showToast('Error: ' + (d.detail || JSON.stringify(d)), 'error');
-                }
-            } catch(e) {
-                showToast('Request failed: ' + e.message, 'error');
+    async function saveKey(provider) {
+        const keyMap = { nvidia:'inputNvidiaKey', openrouter:'inputOpenrouterKey', groq:'inputGroqKey' };
+        const val = document.getElementById(keyMap[provider]).value.trim();
+        if (!val) { showToast('Paste a key first', 'error'); return; }
+        const body = {};
+        if (provider === 'nvidia')     body.nvidia_api_key     = val;
+        if (provider === 'openrouter') body.openrouter_api_key = val;
+        if (provider === 'groq')       body.groq_api_key       = val;
+        try {
+            const res = await fetch(`${API_BASE}/config`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+            const d = await res.json();
+            if (res.ok) {
+                showToast(`${provider.toUpperCase()} key saved — provider: ${d.active_provider}`);
+                document.getElementById(keyMap[provider]).value = '';
+                await loadConfigStatus();
+            } else {
+                showToast('Error: ' + (d.detail||JSON.stringify(d)), 'error');
             }
-        }
+        } catch(e) { showToast('Request failed: ' + e.message, 'error'); }
+    }
 
-        // ─── Init ─────────────────────────────────────────────────────────
-        async function init() {
-            await checkHealth();
-            await loadDashboardStats();
-            await loadConfigStatus();
-            // Auto-refresh every 30 seconds
-            setInterval(async () => {
-                await checkHealth();
-                await loadDashboardStats();
-            }, 30000);
-        }
-
-        init();
-    </script>
+    // ── Init ──────────────────────────────────────────────────────────────
+    async function init() {
+        await checkHealth();
+        await loadDashboardStats();
+        await loadConfigStatus();
+        setInterval(async () => { await checkHealth(); await loadDashboardStats(); }, 30000);
+    }
+    init();
+</script>
 </body>
 </html>
